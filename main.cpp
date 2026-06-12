@@ -54,6 +54,43 @@ int main() {
 
     ImGui::StyleColorsDark();
 
+    void ApplyTrendyDarkStyle(); {
+        ImGuiStyle& style = ImGui::GetStyle();
+        ImVec4* colors = style.Colors;
+
+        // ✨ 1. 모서리 둥글기 튜닝 (Rounding)
+        style.WindowRounding = 12.0f;     // 메인 윈도우 모서리 둥글게
+        style.FrameRounding = 8.0f;       // 버튼, 슬라이더 모서리 둥글게
+        style.PopupRounding = 8.0f;       // 팝업 창 모서리
+        style.GrabRounding = 6.0f;        // 슬라이더 조절 바 모서리
+
+        // ✨ 2. 여백 및 간격 조절 (Padding)
+        style.WindowPadding = ImVec2(20.0f, 20.0f); // 창 내부 여백을 넉넉하게
+        style.FramePadding = ImVec2(12.0f, 8.0f);   // 버튼 내부 텍스트 여백 늘리기
+        style.ItemSpacing = ImVec2(15.0f, 12.0f);   // 위아래 컴포넌트 간격 넓히기
+
+        // ✨ 3. 세련된 딥 다크 컬러 피킹 (Colors)
+        colors[ImGuiCol_WindowBg]             = ImVec4(0.09f, 0.10f, 0.15f, 1.00f); // 깊은 네이비 블랙 배경
+        colors[ImGuiCol_ChildBg]              = ImVec4(0.14f, 0.15f, 0.20f, 1.00f); // 내부 자식 창 배경
+        colors[ImGuiCol_PopupBg]              = ImVec4(0.14f, 0.15f, 0.20f, 1.00f);
+
+        // 버튼 색상 (평소 / 마우스 올렸을 때 / 클릭했을 때)
+        colors[ImGuiCol_Button]               = ImVec4(0.20f, 0.24f, 0.35f, 1.00f); // 차분한 네이비 블루
+        colors[ImGuiCol_ButtonHovered]        = ImVec4(0.28f, 0.33f, 0.48f, 1.00f); // 밝은 블루
+        colors[ImGuiCol_ButtonActive]         = ImVec4(0.38f, 0.43f, 0.60f, 1.00f);
+
+        // 헤더 및 타이틀 바 색상
+        colors[ImGuiCol_TitleBg]              = ImVec4(0.09f, 0.10f, 0.15f, 1.00f);
+        colors[ImGuiCol_TitleBgActive]        = ImVec4(0.14f, 0.15f, 0.20f, 1.00f);
+        colors[ImGuiCol_Header]               = ImVec4(0.20f, 0.24f, 0.35f, 1.00f);
+        colors[ImGuiCol_HeaderHovered]        = ImVec4(0.28f, 0.33f, 0.48f, 1.00f);
+        colors[ImGuiCol_HeaderActive]         = ImVec4(0.38f, 0.43f, 0.60f, 1.00f);
+
+        // 텍스트 색상
+        colors[ImGuiCol_Text]                 = ImVec4(0.95f, 0.96f, 0.98f, 1.00f); // 완전 흰색보단 눈이 편한 아이보리 화이트
+        colors[ImGuiCol_TextDisabled]         = ImVec4(0.50f, 0.55f, 0.65f, 1.00f);
+    }
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
