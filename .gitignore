@@ -1,0 +1,13 @@
+# CLion 빌드 폴더 제외
+.idea/
+cmake-build-debug/
+cmake-build-release/
+
+# 컴파일된 실행 파일 및 목적 파일 제외
+*.o
+*.a
+*.so
+music_player
+
+# OS 생성 파일 제외
+.DS_Store
