@@ -133,7 +133,20 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Music Player");
+        // 🌟 [치트키 1] 창의 타이틀바, 크기 조절, 이동, 접기 기능을 다 꺼버리는 플래그 세팅!
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar |
+                                        ImGuiWindowFlags_NoResize |
+                                        ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoCollapse;
+
+        // 🌟 [치트키 2] ImGui 창의 위치를 무조건 (0, 0) 즉, 왼쪽 맨 위 구석으로 고정!
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+
+        // 🌟 [치트키 3] ImGui 창의 크기를 GLFW 바깥 창 크기(io.DisplaySize)와 100% 똑같이 강제 일치!
+        ImGui::SetNextWindowSize(io.DisplaySize);
+
+        // 💡 이제 위에서 세팅한 플래그(window_flags)를 매개변수로 넘겨주며 창을 열어!
+        ImGui::Begin("Music Player", nullptr, window_flags);
 
         // 1. 좌측: 대형 앨범 아트 배치 (기존 코드)
         if (albumArtTexture != 0) {
