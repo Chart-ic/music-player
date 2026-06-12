@@ -91,6 +91,15 @@ int main() {
 
     ImGui::StyleColorsDark();
 
+    // icon load
+    int imgW = 0, imgH = 0;
+
+    // 💡 FromMemory -> FromFile 로 이름이 바뀐 걸 꼭 확인해!
+    GLuint iconSong   = TextureLoader::loadTextureFromFile("assets/icons/song.png", imgW, imgH);
+    GLuint iconArtist = TextureLoader::loadTextureFromFile("assets/icons/artist.png", imgW, imgH);
+    GLuint iconAlbum  = TextureLoader::loadTextureFromFile("assets/icons/album.png", imgW, imgH);
+    GLuint iconPlay   = TextureLoader::loadTextureFromFile("assets/icons/play.png", imgW, imgH);
+    GLuint iconPause  = TextureLoader::loadTextureFromFile("assets/icons/pause.png", imgW, imgH);
 
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -126,7 +135,7 @@ int main() {
 
         ImGui::Begin("Music Player");
 
-        // 💡 좌측: 앨범 아트 배치
+        // 1. 좌측: 대형 앨범 아트 배치 (기존 코드)
         if (albumArtTexture != 0) {
             auto textureID = static_cast<ImTextureID>(static_cast<uintptr_t>(albumArtTexture));
             ImGui::Image(textureID, ImVec2(180, 180));
@@ -134,21 +143,70 @@ int main() {
             ImGui::Dummy(ImVec2(180, 180));
         }
 
-        // 💡 우측으로 커서 이동 시켜서 곡 정보 띄우기!
         ImGui::SameLine();
 
-        // 우측 정렬을 위해 그룹으로 묶어주기
+        // 2. 우측: 곡 정보 및 컨트롤 버튼
         ImGui::BeginGroup();
-        ImGui::Text("🎵 %s", currentMeta.title.c_str());
-        ImGui::TextDisabled("👤 %s", currentMeta.artist.c_str());
-        ImGui::TextDisabled("💿 %s", currentMeta.album.c_str());
 
-        ImGui::Spacing(); // 약간의 위아래 간격 추가
+            // 🎵 곡 제목 (앞에 song.png 아이콘 배치)
+            if (iconSong != 0) {
+                ImGui::Image(static_cast<ImTextureID>(static_cast<uintptr_t>(iconSong)), ImVec2(20, 20));
+                ImGui::SameLine();
+            }
+            ImGui::Text("%s", currentMeta.title.c_str());
 
-        // 여기에 나중에 재생/정지 버튼 넣으면 딱이겠지?
-        if (ImGui::Button("PLAY", ImVec2(80, 35))) { /* 재생 로직 */ }
+            // 👤 아티스트 (앞에 artist.png 아이콘 배치)
+            if (iconArtist != 0) {
+                ImGui::Image(static_cast<ImTextureID>(static_cast<uintptr_t>(iconArtist)), ImVec2(20, 20));
+                ImGui::SameLine();
+            }
+            ImGui::TextDisabled("%s", currentMeta.artist.c_str());
+
+            // 💿 앨범명 (앞에 album.png 아이콘 배치)
+            if (iconAlbum != 0) {
+                ImGui::Image(static_cast<ImTextureID>(static_cast<uintptr_t>(iconAlbum)), ImVec2(20, 20));
+                ImGui::SameLine();
+            }
+            ImGui::TextDisabled("%s", currentMeta.album.c_str());
+
+            ImGui::Spacing(); ImGui::Spacing(); // 숨통 틔우기 여백
+
+        // Spacing(); Spacing(); 밑에 있는 버튼 영역을 이걸로 교체!
+
+        // ▶️ PLAY 이미지 버튼
+        if (iconPlay != 0) {
+            auto playID = static_cast<ImTextureID>(static_cast<uintptr_t>(iconPlay));
+
+            // 💡 [찌그러짐 방지 치트키] 이 버튼만 임시로 내부 여백을 사방 4픽셀로 좁히기!
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 4.0f));
+
+            if (ImGui::ImageButton("##PlayBtn", playID, ImVec2(40, 40))) {
+                // 💡 [실제 작동 코드 삽입!] 오디오 엔진 재생 시작
+                // (※ 네 AudioEngine 클래스 내부 재생 함수 이름이 play() 또는 start() 인지 확인하고 맞춰줘!)
+                player.play();
+            }
+
+            ImGui::PopStyleVar(); // 임시 스타일 해제 (원상복구)
+        }
+
         ImGui::SameLine();
-        if (ImGui::Button("PAUSE", ImVec2(80, 35))) { /* 일시정지 로직 */ }
+
+        // ⏸️ PAUSE 이미지 버튼
+        if (iconPause != 0) {
+            auto pauseID = static_cast<ImTextureID>(static_cast<uintptr_t>(iconPause));
+
+            // 💡 여기도 똑같이 여백 간섭 제거
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 4.0f));
+
+            if (ImGui::ImageButton("##PauseBtn", pauseID, ImVec2(40, 40))) {
+                // 💡 [실제 작동 코드 삽입!] 오디오 엔진 일시정지
+                // (※ 내부 함수 이름이 pause() 또는 stop() 인지 확인!)
+                player.pause();
+            }
+
+            ImGui::PopStyleVar();
+        }
+
         ImGui::EndGroup();
 
         if (ImGui::SliderFloat("Volume", &volume, 0.0f, 1.0f)) {

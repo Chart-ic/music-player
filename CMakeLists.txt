@@ -58,4 +58,8 @@ add_custom_command(TARGET music_player POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
         "$<TARGET_FILE_DIR:music_player>/fonts"
+        # 아이콘 복사
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons"
+        "$<TARGET_FILE_DIR:music_player>/assets/icons"
 )
