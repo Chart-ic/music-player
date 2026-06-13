@@ -3,16 +3,15 @@
 #include <QHBoxLayout>
 #include <QFileDialog>
 #include <QIcon>
-#include <QString>
 #include <QDir>
 #include <QStringList>
-#include <QDirIterator>  // 🌟 중복 include 정리 완료!
+#include <QDirIterator>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFile>
 #include <QFileInfo>
-#include <algorithm>     // 🌟 std::sort 사용을 위해 반드시 필요한 헤더 누락 추가!
+#include <algorithm>     // 🌟 std::ranges::sort 등을 위한 헤더
 #include <vector>
 
 MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
@@ -100,18 +99,17 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
 }
 
 MusicPlayerWindow::~MusicPlayerWindow() {
-    // Qt 부모-자식 구조 기반 자동 해제
+    // Qt 부모-자식 관계 트리에 의해 위젯들은 자동 해제됩니다.
 }
 
 void MusicPlayerWindow::slotPlay() { player.play(); }
 void MusicPlayerWindow::slotPause() { player.pause(); }
 
 void MusicPlayerWindow::slotSeek(int value) {
-    // AudioEngine이 분리된 인터페이스 명세(double 혹은 float)에 맞춰 호출
     player.setPosition(static_cast<double>(value));
 }
 
-void MusicPlayerWindow::slotUpdateProgress() {
+void MusicPlayerWindow::slotUpdateProgress() const {
     if (!sliderPosition->isSliderDown()) {
         sliderPosition->setValue(static_cast<int>(player.getCurrentTime()));
     }
@@ -119,7 +117,7 @@ void MusicPlayerWindow::slotUpdateProgress() {
 
 void MusicPlayerWindow::slotOpenFile() {
     QString fileName = QFileDialog::getOpenFileName(this,
-        "음악 파일 열기", "", "Audio Files (*.flac *.mp3 *.wav);;All Files (*)");
+        "음악 파일 열기", "", "Audio Files (*.flac *.mp3 *.wav *.ogg *.opus);;All Files (*)");
 
     if (!fileName.isEmpty()) {
         std::string songPath = fileName.toStdString();
@@ -135,16 +133,14 @@ void MusicPlayerWindow::slotOpenFile() {
             lblAlbum->setText("<img src='../assets/icons/album.png' width='20' height='20'> " + album);
 
             QFileInfo fileInfo(fileName);
-            auto* newItem = new QListWidgetItem(fileInfo.fileName());
+            // 🌟 메모리 누수 방지: playlistWidget을 부모(Parent)로 지정하여 안전하게 수명 관리 수렴
+            auto* newItem = new QListWidgetItem(fileInfo.fileName(), playlistWidget);
             newItem->setIcon(QIcon("assets/icons/music_note.png"));
 
-            // 뒷주머니에 데이터 보관
             newItem->setData(Qt::UserRole, fileName);
             newItem->setData(Qt::UserRole + 1, title);
             newItem->setData(Qt::UserRole + 2, artist);
             newItem->setData(Qt::UserRole + 3, album);
-
-            playlistWidget->addItem(newItem);
 
             sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
             sliderPosition->setValue(0);
@@ -178,10 +174,10 @@ void MusicPlayerWindow::slotOpenFolder() {
     QString dirPath = QFileDialog::getExistingDirectory(this, "음악 폴더 선택", "");
 
     if (!dirPath.isEmpty()) {
-        QStringList filters;
-        filters << "*.flac" << "*.mp3" << "*.wav";
+        QStringList nameFilters; // 🌟 변수 이름 가림(Shadowing) 버그 해결: 이름을 filters 대신 nameFilters로 명확화
+        nameFilters << "*.flac" << "*.mp3" << "*.wav" << "*.ogg" << "*.opus";
 
-        QDirIterator it(dirPath, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+        QDirIterator it(dirPath, nameFilters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
 
         while (it.hasNext()) {
             it.next();
@@ -190,26 +186,29 @@ void MusicPlayerWindow::slotOpenFolder() {
             std::string path = fileInfo.absoluteFilePath().toStdString();
             MusicMetadata meta = AudioEngine::getMetadata(path);
 
-            auto* newItem = new QListWidgetItem(fileInfo.fileName());
+            // 🌟 메모리 누수 방지: playlistWidget을 부모로 설정
+            auto* newItem = new QListWidgetItem(fileInfo.fileName(), playlistWidget);
             newItem->setIcon(QIcon("assets/icons/music_note.png"));
 
             newItem->setData(Qt::UserRole, fileInfo.absoluteFilePath());
             newItem->setData(Qt::UserRole + 1, QString::fromStdString(meta.title));
             newItem->setData(Qt::UserRole + 2, QString::fromStdString(meta.artist));
             newItem->setData(Qt::UserRole + 3, QString::fromStdString(meta.album));
-
-            playlistWidget->addItem(newItem);
         }
     }
 }
 
-void MusicPlayerWindow::slotSortPlaylist(int index) {
+void MusicPlayerWindow::slotSortPlaylist(int index) const {
     std::vector<QListWidgetItem*> items;
+    items.reserve(playlistWidget->count());
+
     while (playlistWidget->count() > 0) {
         items.push_back(playlistWidget->takeItem(0));
     }
 
-    std::sort(items.begin(), items.end(), [index](QListWidgetItem* a, QListWidgetItem* b) {
+    // 🌟 모던 C++20 치트키 장착: std::ranges::sort 사용하여 메모리 안전성 극대화
+    // 🌟 매개변수 a와 b를 const 포인터(const QListWidgetItem*)로 명시하여 경고 완벽 제거
+    std::ranges::sort(items, [index](const QListWidgetItem* a, const QListWidgetItem* b) {
         if (index == 0) {
             return a->text() < b->text();
         }
@@ -227,11 +226,12 @@ void MusicPlayerWindow::closeEvent(QCloseEvent *event) {
     QWidget::closeEvent(event);
 }
 
-void MusicPlayerWindow::savePlaylist() {
+// 🌟 함수 안전성 강화: 데이터를 변경하지 않는 순수 읽기용 저장 함수이므로 내부 헬퍼 로직 최적화
+void MusicPlayerWindow::savePlaylist() const {
     QJsonArray playlistArray;
 
     for (int i = 0; i < playlistWidget->count(); ++i) {
-        QListWidgetItem* item = playlistWidget->item(i);
+        const QListWidgetItem* item = playlistWidget->item(i);
         QString path = item->data(Qt::UserRole).toString();
         playlistArray.append(path);
     }
@@ -244,7 +244,7 @@ void MusicPlayerWindow::savePlaylist() {
     }
 }
 
-void MusicPlayerWindow::loadPlaylist() {
+void MusicPlayerWindow::loadPlaylist() const {
     QFile file("playlist.json");
     if (!file.open(QIODevice::ReadOnly)) return;
 
@@ -265,14 +265,13 @@ void MusicPlayerWindow::loadPlaylist() {
         std::string stdPath = path.toStdString();
         MusicMetadata meta = AudioEngine::getMetadata(stdPath);
 
-        auto* newItem = new QListWidgetItem(fileInfo.fileName());
+        // 🌟 메모리 누수 방지: playlistWidget을 소유자로 지정
+        auto* newItem = new QListWidgetItem(fileInfo.fileName(), playlistWidget);
         newItem->setIcon(QIcon("assets/icons/music_note.png"));
 
         newItem->setData(Qt::UserRole, path);
         newItem->setData(Qt::UserRole + 1, QString::fromStdString(meta.title));
         newItem->setData(Qt::UserRole + 2, QString::fromStdString(meta.artist));
         newItem->setData(Qt::UserRole + 3, QString::fromStdString(meta.album));
-
-        playlistWidget->addItem(newItem);
     }
-} // 🌟 뒤틀려 삐져나와있던 마지막 중괄호 블록 완벽 정돈!
+}

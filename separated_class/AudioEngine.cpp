@@ -3,6 +3,10 @@
 #include <taglib/fileref.h>  // 🌟 TagLib 메타데이터 파싱용 헤더
 #include <taglib/tag.h>
 
+// BASS Plugin
+#include "../libs/bass/bassflac.h"
+#include "../libs/bass/bassopus.h"
+
 
 
 AudioEngine::AudioEngine() : currentStream(0) {
@@ -10,6 +14,16 @@ AudioEngine::AudioEngine() : currentStream(0) {
     // 리눅스의 ALSA나 PulseAudio/PipeWire 환경을 BASS가 알아서 매핑합니다.
     if (!BASS_Init(-1, 44100, 0, nullptr, nullptr)) {
         std::cerr << "[BASS Error] 장치 초기화 실패! 에러 코드: " << BASS_ErrorGetCode() << std::endl;
+    }
+
+    // FLAC
+    if (!BASS_PluginLoad("libbassflac.so", 0)) {
+        std::cerr << "[BASS Warning] FLAC 플러그인 로드 실패! 에러 코드: " << BASS_ErrorGetCode() << std::endl;
+    }
+
+    // Opus
+    if (!BASS_PluginLoad("libbassopus.so", 0)) {
+        std::cerr << "[BASS Warning] Opus 플러그인 로드 실패!" << std::endl;
     }
 }
 

@@ -25,15 +25,15 @@ private slots:
     void slotPlay();
     void slotPause();
     void slotSeek(int value);
-    void slotUpdateProgress();
+    void slotUpdateProgress() const;
     void slotOpenFile();
     void slotOpenFolder();
     void slotPlayListItem(const QListWidgetItem* item);
-    void slotSortPlaylist(int index);
+    void slotSortPlaylist(int index) const;
 
 private:
-    void savePlaylist();
-    void loadPlaylist();
+    void savePlaylist() const;
+    void loadPlaylist() const;
 
 private:
     AudioEngine player;
