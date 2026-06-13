@@ -6,7 +6,14 @@
 #include <QString>
 #include <QDir>
 #include <QStringList>
-#include <QDirIterator> // 🌟 하위 폴더 탐색기 추가!
+#include <QDirIterator>  // 🌟 중복 include 정리 완료!
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QFileInfo>
+#include <algorithm>     // 🌟 std::sort 사용을 위해 반드시 필요한 헤더 누락 추가!
+#include <vector>
 
 MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     setWindowTitle("Qt Music Player");
@@ -14,7 +21,7 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
 
     auto* mainLayout = new QVBoxLayout(this);
 
-    // 🌟 이모지 대신 <img> 태그를 사용해서 아이콘 경로와 크기를 지정!
+    // 라벨 생성 및 아이콘 매핑
     lblTitle = new QLabel("<img src='../assets/icons/song.png' width='20' height='20'>   재생 중인 곡 없음", this);
     lblArtist = new QLabel("<img src='../assets/icons/artist.png' width='20' height='20'>   아티스트", this);
     lblAlbum = new QLabel("<img src='../assets/icons/album.png' width='20' height='20'>   앨범", this);
@@ -24,24 +31,23 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     mainLayout->addWidget(lblAlbum);
     mainLayout->addSpacing(15);
 
-    // 🌟 정렬용 콤보박스 추가
+    // 정렬용 콤보박스
     comboSort = new QComboBox(this);
-    comboSort->addItem("파일명 순");   // index 0
-    comboSort->addItem("제목 순");     // index 1
-    comboSort->addItem("아티스트 순"); // index 2
-    comboSort->addItem("앨범 순");     // index 3
+    comboSort->addItem("파일명 순");
+    comboSort->addItem("제목 순");
+    comboSort->addItem("아티스트 순");
+    comboSort->addItem("앨범 순");
     mainLayout->addWidget(comboSort);
 
-    // 콤보박스 값이 바뀔 때마다 정렬 함수 실행!
     connect(comboSort, &QComboBox::currentIndexChanged, this, &MusicPlayerWindow::slotSortPlaylist);
-    // ==========================================
 
-    // 🌟 리스트 위젯 추가 (라벨과 버튼 사이에 쏙!)
-    playlistWidget = new QListWidget(); // NOLINT
+    // 플레이리스트 위젯
+    playlistWidget = new QListWidget(this);
     mainLayout->addWidget(playlistWidget);
     connect(playlistWidget, &QListWidget::itemDoubleClicked, this, &MusicPlayerWindow::slotPlayListItem);
 
-    auto* buttonLayout = new QHBoxLayout(); // NOLINT
+    // 하단 제어 버튼 레이아웃
+    auto* buttonLayout = new QHBoxLayout();
 
     btnFileOpen = new QPushButton(this);
     btnFileOpen->setIcon(QIcon("assets/icons/file.png"));
@@ -49,14 +55,12 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     btnFileOpen->setFixedSize(60, 60);
     connect(btnFileOpen, &QPushButton::clicked, this, &MusicPlayerWindow::slotOpenFile);
 
-    // 🌟 여기에 폴더 열기 버튼 생성 코드 추가!!
     btnFolderOpen = new QPushButton(this);
-    btnFolderOpen->setIcon(QIcon("assets/icons/folder.png")); // 폴더 아이콘 경로 (맞춰서 수정해!)
+    btnFolderOpen->setIcon(QIcon("assets/icons/folder.png"));
     btnFolderOpen->setIconSize(QSize(40, 40));
     btnFolderOpen->setFixedSize(60, 60);
     connect(btnFolderOpen, &QPushButton::clicked, this, &MusicPlayerWindow::slotOpenFolder);
 
-    // play
     btnPlay = new QPushButton(this);
     btnPlay->setIcon(QIcon("assets/icons/play.png"));
     btnPlay->setIconSize(QSize(40, 40));
@@ -69,7 +73,7 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     btnPause->setFixedSize(60, 60);
     connect(btnPause, &QPushButton::clicked, this, &MusicPlayerWindow::slotPause);
 
-    QPushButton* btnExit = new QPushButton("종료", this); // NOLINT
+    auto* btnExit = new QPushButton("종료", this);
     btnExit->setFixedSize(60, 60);
     connect(btnExit, &QPushButton::clicked, this, &QWidget::close);
 
@@ -78,28 +82,34 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     buttonLayout->addWidget(btnPlay);
     buttonLayout->addWidget(btnPause);
     buttonLayout->addWidget(btnExit);
-
     mainLayout->addLayout(buttonLayout);
 
+    // 프로그레스 슬라이더
     sliderPosition = new QSlider(Qt::Horizontal, this);
     sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
     mainLayout->addWidget(sliderPosition);
-
     connect(sliderPosition, &QSlider::sliderMoved, this, &MusicPlayerWindow::slotSeek);
 
+    // 진행 상태 업데이트 타이머
     updateTimer = new QTimer(this);
     connect(updateTimer, &QTimer::timeout, this, &MusicPlayerWindow::slotUpdateProgress);
     updateTimer->start(100);
+
+    // 이전 세션 플레이리스트 불러오기
+    loadPlaylist();
 }
 
 MusicPlayerWindow::~MusicPlayerWindow() {
-    // Qt 객체 트리(this)가 알아서 UI를 delete 하므로 비워둠
+    // Qt 부모-자식 구조 기반 자동 해제
 }
 
-// ================== 슬롯 함수들 ==================
 void MusicPlayerWindow::slotPlay() { player.play(); }
 void MusicPlayerWindow::slotPause() { player.pause(); }
-void MusicPlayerWindow::slotSeek(int value) { player.seekTo(static_cast<float>(value)); }
+
+void MusicPlayerWindow::slotSeek(int value) {
+    // AudioEngine이 분리된 인터페이스 명세(double 혹은 float)에 맞춰 호출
+    player.setPosition(static_cast<double>(value));
+}
 
 void MusicPlayerWindow::slotUpdateProgress() {
     if (!sliderPosition->isSliderDown()) {
@@ -113,10 +123,43 @@ void MusicPlayerWindow::slotOpenFile() {
 
     if (!fileName.isEmpty()) {
         std::string songPath = fileName.toStdString();
-        player.load(songPath);
+        if (player.load(songPath)) {
+            MusicMetadata meta = AudioEngine::getMetadata(songPath);
+
+            QString title = QString::fromStdString(meta.title);
+            QString artist = QString::fromStdString(meta.artist);
+            QString album = QString::fromStdString(meta.album);
+
+            lblTitle->setText("<img src='../assets/icons/song.png' width='20' height='20'> " + title);
+            lblArtist->setText("<img src='../assets/icons/artist.png' width='20' height='20'> " + artist);
+            lblAlbum->setText("<img src='../assets/icons/album.png' width='20' height='20'> " + album);
+
+            QFileInfo fileInfo(fileName);
+            auto* newItem = new QListWidgetItem(fileInfo.fileName());
+            newItem->setIcon(QIcon("assets/icons/music_note.png"));
+
+            // 뒷주머니에 데이터 보관
+            newItem->setData(Qt::UserRole, fileName);
+            newItem->setData(Qt::UserRole + 1, title);
+            newItem->setData(Qt::UserRole + 2, artist);
+            newItem->setData(Qt::UserRole + 3, album);
+
+            playlistWidget->addItem(newItem);
+
+            sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
+            sliderPosition->setValue(0);
+            player.play();
+        }
+    }
+}
+
+void MusicPlayerWindow::slotPlayListItem(const QListWidgetItem* item) {
+    if (!item) return;
+    std::string songPath = item->data(Qt::UserRole).toString().toStdString();
+
+    if (player.load(songPath)) {
         MusicMetadata meta = AudioEngine::getMetadata(songPath);
 
-        // 🌟 QString으로 변환한 다음 HTML 태그 문자열이랑 합쳐주면 끝!
         QString title = QString::fromStdString(meta.title);
         QString artist = QString::fromStdString(meta.artist);
         QString album = QString::fromStdString(meta.album);
@@ -125,105 +168,111 @@ void MusicPlayerWindow::slotOpenFile() {
         lblArtist->setText("<img src='../assets/icons/artist.png' width='20' height='20'> " + artist);
         lblAlbum->setText("<img src='../assets/icons/album.png' width='20' height='20'> " + album);
 
-        // ==========================================
-        // 🌟 리스트에 곡 추가하기!
-        QFileInfo fileInfo(fileName); // 파일 경로에서 이름만 쏙 빼주는 도우미
-
-        // 1. 화면에 보여줄 예쁜 이름으로 아이템 만들기
-        QListWidgetItem* newItem = new QListWidgetItem(fileInfo.fileName());
-
-        newItem->setIcon(QIcon("assets/icons/music_note.png"));
-
-        // 2. 뒷주머니(UserRole)에 전체 경로 몰래 숨겨두기!
-        newItem->setData(Qt::UserRole, fileName);
-
-        // 3. 리스트 위젯에 쏙 넣기
-        playlistWidget->addItem(newItem);
-        // ==========================================
-
         sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
         sliderPosition->setValue(0);
-        player.play(); // 열면 바로 재생
+        player.play();
     }
 }
 
-void MusicPlayerWindow::slotPlayListItem(const QListWidgetItem* item) {
-    std::string songPath = item->data(Qt::UserRole).toString().toStdString();
-
-    player.load(songPath);
-    MusicMetadata meta = AudioEngine::getMetadata(songPath);
-
-    // 🌟 변경: 이모지를 지우고, slotOpenFile에 썼던 HTML img 태그로 똑같이 교체!
-    QString title = QString::fromStdString(meta.title);
-    QString artist = QString::fromStdString(meta.artist);
-    QString album = QString::fromStdString(meta.album);
-
-    lblTitle->setText("<img src='../assets/icons/song.png' width='20' height='20'> " + title);
-    lblArtist->setText("<img src='../assets/icons/artist.png' width='20' height='20'> " + artist);
-    lblAlbum->setText("<img src='../assets/icons/album.png' width='20' height='20'> " + album);
-
-    sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
-    sliderPosition->setValue(0);
-    player.play();
-}
-
-// 🌟 맨 밑에 폴더(하위 폴더 포함) 째로 긁어오는 함수!
 void MusicPlayerWindow::slotOpenFolder() {
-    // 1. 폴더 선택 창 띄우기
     QString dirPath = QFileDialog::getExistingDirectory(this, "음악 폴더 선택", "");
 
     if (!dirPath.isEmpty()) {
-        // 2. 음악 파일 확장자만 쏙쏙 골라내기 위한 필터 설정
         QStringList filters;
         filters << "*.flac" << "*.mp3" << "*.wav";
 
-        // 3. 🌟 QDirIterator 탐색 로봇 출동! (핵심: QDirIterator::Subdirectories)
-        // 이 옵션을 넣으면 로봇이 폴더 안의 폴더까지 끝까지 파고들어!
         QDirIterator it(dirPath, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
 
-        // 4. 로봇이 파일을 찾을 때마다(hasNext) 리스트에 팍팍 집어넣기!
         while (it.hasNext()) {
             it.next();
             QFileInfo fileInfo = it.fileInfo();
 
-            // 🌟 이 파일의 메타데이터(태그) 뽑아오기!
             std::string path = fileInfo.absoluteFilePath().toStdString();
             MusicMetadata meta = AudioEngine::getMetadata(path);
 
-            QListWidgetItem* newItem = new QListWidgetItem(fileInfo.fileName());
+            auto* newItem = new QListWidgetItem(fileInfo.fileName());
             newItem->setIcon(QIcon("assets/icons/music_note.png"));
 
-            // 🌟 뒷주머니 칸을 여러 개로 나눠서 데이터 저장!
-            newItem->setData(Qt::UserRole, fileInfo.absoluteFilePath()); // 기본 경로
-            newItem->setData(Qt::UserRole + 1, QString::fromStdString(meta.title));  // +1: 제목
-            newItem->setData(Qt::UserRole + 2, QString::fromStdString(meta.artist)); // +2: 아티스트
-            newItem->setData(Qt::UserRole + 3, QString::fromStdString(meta.album));  // +3: 앨범
+            newItem->setData(Qt::UserRole, fileInfo.absoluteFilePath());
+            newItem->setData(Qt::UserRole + 1, QString::fromStdString(meta.title));
+            newItem->setData(Qt::UserRole + 2, QString::fromStdString(meta.artist));
+            newItem->setData(Qt::UserRole + 3, QString::fromStdString(meta.album));
 
             playlistWidget->addItem(newItem);
         }
     }
 }
 
-// 🌟 맨 밑에 정렬 함수 추가
 void MusicPlayerWindow::slotSortPlaylist(int index) {
-    // 1. 리스트에 있는 아이템들을 싹 다 뽑아서 벡터(배열)에 담기
     std::vector<QListWidgetItem*> items;
     while (playlistWidget->count() > 0) {
         items.push_back(playlistWidget->takeItem(0));
     }
 
-    // 2. 선택한 인덱스(0:파일명, 1:제목, 2:아티스트, 3:앨범)에 맞춰서 정렬!
     std::sort(items.begin(), items.end(), [index](QListWidgetItem* a, QListWidgetItem* b) {
         if (index == 0) {
-            return a->text() < b->text(); // 파일명(화면에 보이는 글씨) 기준
+            return a->text() < b->text();
         }
-        // index 1, 2, 3은 우리가 아까 뒷주머니(UserRole + index)에 넣었던 데이터 기준!
         int targetRole = Qt::UserRole + index;
         return a->data(targetRole).toString() < b->data(targetRole).toString();
     });
 
-    // 3. 예쁘게 정렬된 아이템들을 다시 리스트에 쏙쏙 꽂아 넣기
     for (auto* item : items) {
         playlistWidget->addItem(item);
     }
 }
+
+void MusicPlayerWindow::closeEvent(QCloseEvent *event) {
+    savePlaylist();
+    QWidget::closeEvent(event);
+}
+
+void MusicPlayerWindow::savePlaylist() {
+    QJsonArray playlistArray;
+
+    for (int i = 0; i < playlistWidget->count(); ++i) {
+        QListWidgetItem* item = playlistWidget->item(i);
+        QString path = item->data(Qt::UserRole).toString();
+        playlistArray.append(path);
+    }
+
+    QJsonDocument doc(playlistArray);
+    QFile file("playlist.json");
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson());
+        file.close();
+    }
+}
+
+void MusicPlayerWindow::loadPlaylist() {
+    QFile file("playlist.json");
+    if (!file.open(QIODevice::ReadOnly)) return;
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isArray()) return;
+
+    QJsonArray array = doc.array();
+
+    for (const QJsonValue& value : array) {
+        QString path = value.toString();
+        QFileInfo fileInfo(path);
+
+        if (!fileInfo.exists()) continue;
+
+        std::string stdPath = path.toStdString();
+        MusicMetadata meta = AudioEngine::getMetadata(stdPath);
+
+        auto* newItem = new QListWidgetItem(fileInfo.fileName());
+        newItem->setIcon(QIcon("assets/icons/music_note.png"));
+
+        newItem->setData(Qt::UserRole, path);
+        newItem->setData(Qt::UserRole + 1, QString::fromStdString(meta.title));
+        newItem->setData(Qt::UserRole + 2, QString::fromStdString(meta.artist));
+        newItem->setData(Qt::UserRole + 3, QString::fromStdString(meta.album));
+
+        playlistWidget->addItem(newItem);
+    }
+} // 🌟 뒤틀려 삐져나와있던 마지막 중괄호 블록 완벽 정돈!

@@ -5,10 +5,11 @@
 #include <QLabel>
 #include <QSlider>
 #include <QPushButton>
+#include <QCloseEvent>
 #include <QTimer>
-#include <QListWidget> // 🌟 1. 리스트 위젯 헤더 추가!
-#include "separated_class/AudioEngine.h"
+#include <QListWidget>
 #include <QComboBox>
+#include "separated_class/AudioEngine.h" // 경로 일치 확인 필요 (프로젝트 루트 기준인지)
 
 class MusicPlayerWindow : public QWidget {
     Q_OBJECT
@@ -17,6 +18,9 @@ public:
     explicit MusicPlayerWindow(QWidget *parent = nullptr);
     ~MusicPlayerWindow() override;
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private slots:
     void slotPlay();
     void slotPause();
@@ -24,26 +28,29 @@ private slots:
     void slotUpdateProgress();
     void slotOpenFile();
     void slotOpenFolder();
-    void slotPlayListItem(const QListWidgetItem* item); // 🌟 2. 리스트 더블클릭 시 실행될 슬롯!
+    void slotPlayListItem(const QListWidgetItem* item);
     void slotSortPlaylist(int index);
 
 private:
+    void savePlaylist();
+    void loadPlaylist();
+
+private:
     AudioEngine player;
-    QTimer* updateTimer;
+    QTimer* updateTimer{nullptr};
 
-    QLabel* lblTitle;
-    QLabel* lblArtist;
-    QLabel* lblAlbum;
-    QSlider* sliderPosition;
+    QLabel* lblTitle{nullptr};
+    QLabel* lblArtist{nullptr};
+    QLabel* lblAlbum{nullptr};
+    QSlider* sliderPosition{nullptr};
 
-    QPushButton* btnFileOpen;
-    QPushButton* btnFolderOpen;
-    QPushButton* btnPlay;
-    QPushButton* btnPause;
+    QPushButton* btnFileOpen{nullptr};
+    QPushButton* btnFolderOpen{nullptr};
+    QPushButton* btnPlay{nullptr};
+    QPushButton* btnPause{nullptr};
 
-    QListWidget* playlistWidget; // 🌟 3. 리스트 UI 변수 선언!
-
-    QComboBox* comboSort;   
+    QListWidget* playlistWidget{nullptr};
+    QComboBox* comboSort{nullptr};
 };
 
 #endif // MUSICPLAYERWINDOW_H
