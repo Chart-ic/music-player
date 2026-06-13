@@ -17,6 +17,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 # 2. 실행 파일 생성 (ImGui 소스들 싹 다 삭제!)
 add_executable(music_player
         main.cpp
+        separated_class/MusicPlayerWindow.cpp
         separated_class/AudioEngine.h
 )
 
