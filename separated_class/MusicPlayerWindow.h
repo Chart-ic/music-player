@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QListWidget> // 🌟 1. 리스트 위젯 헤더 추가!
 #include "separated_class/AudioEngine.h"
+#include <QComboBox>
 
 class MusicPlayerWindow : public QWidget {
     Q_OBJECT
@@ -24,6 +25,7 @@ private slots:
     void slotOpenFile();
     void slotOpenFolder();
     void slotPlayListItem(const QListWidgetItem* item); // 🌟 2. 리스트 더블클릭 시 실행될 슬롯!
+    void slotSortPlaylist(int index);
 
 private:
     AudioEngine player;
@@ -40,6 +42,8 @@ private:
     QPushButton* btnPause;
 
     QListWidget* playlistWidget; // 🌟 3. 리스트 UI 변수 선언!
+
+    QComboBox* comboSort;   
 };
 
 #endif // MUSICPLAYERWINDOW_H
