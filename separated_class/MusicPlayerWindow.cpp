@@ -4,6 +4,8 @@
 #include <QFileDialog>
 #include <QIcon>
 #include <QString>
+#include <QDir>
+#include <QStringList>
 
 MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     setWindowTitle("Qt Music Player");
@@ -11,14 +13,10 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
 
     auto* mainLayout = new QVBoxLayout(this);
 
-    // 기본 곡 로드 (추후 플레이리스트 구현 시 비워둬도 됨)
-    std::string songPath = "test.flac";
-    player.load(songPath);
-    MusicMetadata meta = AudioEngine::getMetadata(songPath);
-
-    lblTitle = new QLabel(QString::fromStdString("🎵 " + meta.title), this);
-    lblArtist = new QLabel(QString::fromStdString("👤 " + meta.artist), this);
-    lblAlbum = new QLabel(QString::fromStdString("💿 " + meta.album), this);
+    // 🌟 이모지 대신 <img> 태그를 사용해서 아이콘 경로와 크기를 지정!
+    lblTitle = new QLabel("<img src='../assets/icons/song.png' width='20' height='20'>   재생 중인 곡 없음", this);
+    lblArtist = new QLabel("<img src='../assets/icons/artist.png' width='20' height='20'>   아티스트", this);
+    lblAlbum = new QLabel("<img src='../assets/icons/album.png' width='20' height='20'>   앨범", this);
 
     mainLayout->addWidget(lblTitle);
     mainLayout->addWidget(lblArtist);
@@ -28,7 +26,6 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
     // 🌟 리스트 위젯 추가 (라벨과 버튼 사이에 쏙!)
     playlistWidget = new QListWidget(); // NOLINT
     mainLayout->addWidget(playlistWidget);
-    playlistWidget->addItem("test.flac");
     connect(playlistWidget, &QListWidget::itemDoubleClicked, this, &MusicPlayerWindow::slotPlayListItem);
 
     auto* buttonLayout = new QHBoxLayout(); // NOLINT
@@ -97,9 +94,30 @@ void MusicPlayerWindow::slotOpenFile() {
         player.load(songPath);
         MusicMetadata meta = AudioEngine::getMetadata(songPath);
 
-        lblTitle->setText(QString::fromStdString("🎵 " + meta.title));
-        lblArtist->setText(QString::fromStdString("👤 " + meta.artist));
-        lblAlbum->setText(QString::fromStdString("💿 " + meta.album));
+        // 🌟 QString으로 변환한 다음 HTML 태그 문자열이랑 합쳐주면 끝!
+        QString title = QString::fromStdString(meta.title);
+        QString artist = QString::fromStdString(meta.artist);
+        QString album = QString::fromStdString(meta.album);
+
+        lblTitle->setText("<img src='../assets/icons/song.png' width='20' height='20'> " + title);
+        lblArtist->setText("<img src='../assets/icons/artist.png' width='20' height='20'> " + artist);
+        lblAlbum->setText("<img src='../assets/icons/album.png' width='20' height='20'> " + album);
+
+        // ==========================================
+        // 🌟 리스트에 곡 추가하기!
+        QFileInfo fileInfo(fileName); // 파일 경로에서 이름만 쏙 빼주는 도우미
+
+        // 1. 화면에 보여줄 예쁜 이름으로 아이템 만들기
+        QListWidgetItem* newItem = new QListWidgetItem(fileInfo.fileName());
+
+        newItem->setIcon(QIcon("assets/icons/music_note.png"));
+
+        // 2. 뒷주머니(UserRole)에 전체 경로 몰래 숨겨두기!
+        newItem->setData(Qt::UserRole, fileName);
+
+        // 3. 리스트 위젯에 쏙 넣기
+        playlistWidget->addItem(newItem);
+        // ==========================================
 
         sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
         sliderPosition->setValue(0);
@@ -108,8 +126,9 @@ void MusicPlayerWindow::slotOpenFile() {
 }
 
 void MusicPlayerWindow::slotPlayListItem(const QListWidgetItem* item) {
-    // 1. 클릭한 아이템의 글자(파일 이름)를 가져와서 string으로 변환
-    std::string songPath = item->text().toStdString();
+    // 🌟 변경 전: item->text() (화면에 보이는 글자)
+    // 🌟 변경 후: item->data(Qt::UserRole).toString() (뒷주머니에 숨겨둔 전체 경로!)
+    std::string songPath = item->data(Qt::UserRole).toString().toStdString();
 
     // 2. 오디오 엔진에 곡 로드하고 메타데이터 빼오기
     player.load(songPath);
@@ -124,4 +143,34 @@ void MusicPlayerWindow::slotPlayListItem(const QListWidgetItem* item) {
     sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
     sliderPosition->setValue(0);
     player.play();
+}
+
+// 🌟 맨 밑에 폴더 째로 긁어오는 함수 추가!
+void MusicPlayerWindow::slotOpenFolder() {
+    // 1. 폴더 선택 창 띄우기
+    QString dirPath = QFileDialog::getExistingDirectory(this, "음악 폴더 선택", "");
+
+    if (!dirPath.isEmpty()) {
+        QDir dir(dirPath);
+
+        // 2. 음악 파일 확장자만 쏙쏙 골라내기 위한 필터 설정
+        QStringList filters;
+        filters << "*.flac" << "*.mp3" << "*.wav";
+        dir.setNameFilters(filters);
+        dir.setFilter(QDir::Files | QDir::NoSymLinks); // 파일만 찾기 (폴더 속 폴더 제외)
+
+        // 3. 필터에 걸러진 파일 목록 가져오기
+        QFileInfoList fileList = dir.entryInfoList();
+
+        // 4. 찾은 파일들을 하나씩 리스트에 팍팍 집어넣기!
+        for (const QFileInfo& fileInfo : fileList) {
+            QListWidgetItem* newItem = new QListWidgetItem(fileInfo.fileName());
+            newItem->setIcon(QIcon("assets/icons/music_note.png"));
+
+            // 💡 여기서 중요한 건 fileName()이 아니라 absoluteFilePath()로 전체 경로를 숨겨야 해!
+            newItem->setData(Qt::UserRole, fileInfo.absoluteFilePath());
+
+            playlistWidget->addItem(newItem);
+        }
+    }
 }

@@ -22,6 +22,7 @@ private slots:
     void slotSeek(int value);
     void slotUpdateProgress();
     void slotOpenFile();
+    void slotOpenFolder();
     void slotPlayListItem(const QListWidgetItem* item); // 🌟 2. 리스트 더블클릭 시 실행될 슬롯!
 
 private:
@@ -34,6 +35,7 @@ private:
     QSlider* sliderPosition;
 
     QPushButton* btnFileOpen;
+    QPushButton* btnFolderOpen;
     QPushButton* btnPlay;
     QPushButton* btnPause;
 
