@@ -21,20 +21,17 @@
 #include <QFileInfo>             // fallbackName
 
 AudioEngine::AudioEngine() : currentStream(0) {
-    // 🌟 1. 리눅스 사운드 장치 초기화 (기본 출력 장치, 44100Hz 기반 시스템 초기화)
-    // 리눅스의 ALSA나 PulseAudio/PipeWire 환경을 BASS가 알아서 매핑합니다.
-    if (!BASS_Init(-1, 44100, 0, nullptr, nullptr)) {
+    // 🌟 주파수를 다시 44100(또는 48000)으로 명시해 줍니다!
+    if (!BASS_Init(-1, 48000, 0, nullptr, nullptr)) {
         std::cerr << "[BASS Error] 장치 초기화 실패! 에러 코드: " << BASS_ErrorGetCode() << std::endl;
     }
 
-    // FLAC
+    // 플러그인 로드 코드는 그대로 유지...
     if (!BASS_PluginLoad("libbassflac.so", 0)) {
-        std::cerr << "[BASS Warning] FLAC 플러그인 로드 실패! 에러 코드: " << BASS_ErrorGetCode() << std::endl;
+        std::cerr << "[BASS Warning] FLAC 플러그인 로드 실패" << std::endl;
     }
-
-    // Opus
     if (!BASS_PluginLoad("libbassopus.so", 0)) {
-        std::cerr << "[BASS Warning] Opus 플러그인 로드 실패!" << std::endl;
+        std::cerr << "[BASS Warning] OPUS 플러그인 로드 실패" << std::endl;
     }
 }
 
