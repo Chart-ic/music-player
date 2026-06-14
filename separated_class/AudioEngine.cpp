@@ -3,9 +3,20 @@
 #include <taglib/fileref.h>  // 🌟 TagLib 메타데이터 파싱용 헤더
 #include <taglib/tag.h>
 
+// Album Art
+
+#include <taglib/mpegfile.h>
+#include <taglib/id3v2tag.h>
+#include <taglib/attachedpictureframe.h>
+#include <taglib/flacfile.h>
+#include <QString>
+
 // BASS Plugin
 #include "../libs/bass/bassflac.h"
 #include "../libs/bass/bassopus.h"
+
+#include <taglib/flacproperties.h>
+#include <taglib/wavproperties.h>
 
 
 
@@ -105,6 +116,21 @@ MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
         if (!f.isNull() && f.tag()) {
             TagLib::Tag* tag = f.tag();
 
+            if (f.audioProperties()) {
+                meta.bitrate = f.audioProperties()->bitrate();
+                meta.sampleRate = f.audioProperties()->sampleRate();
+                meta.channels = f.audioProperties()->channels();
+
+                // 🌟 비트 심도 추출 (FLAC, WAV 지원) - 함수명 bitsPerSample()로 수정!
+                if (const auto* flacProps = dynamic_cast<const TagLib::FLAC::Properties*>(f.audioProperties())) {
+                    meta.bitDepth = flacProps->bitsPerSample();
+                } else if (const auto* wavProps = dynamic_cast<const TagLib::RIFF::WAV::Properties*>(f.audioProperties())) {
+                    meta.bitDepth = wavProps->bitsPerSample();
+                } else {
+                    meta.bitDepth = 0; // MP3 등은 0으로 처리
+                }
+            }
+
             // 태그 정보가 비어있지 않다면 UTF-8 문자열로 안전하게 변환하여 저장
             if (!tag->title().isEmpty())  meta.title  = tag->title().to8Bit(true);
             if (!tag->artist().isEmpty()) meta.artist = tag->artist().to8Bit(true);
@@ -115,4 +141,42 @@ MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
     }
 
     return meta;
+}
+
+// 🌟 BASS 엔진 볼륨 조절 (0.0 = 음소거, 1.0 = 최대)
+void AudioEngine::setVolume(float volume) {
+    if (currentStream) {
+        BASS_ChannelSetAttribute(currentStream, BASS_ATTRIB_VOL, volume);
+    }
+}
+
+// Album Art
+QByteArray AudioEngine::getAlbumArt(const std::string& filePath) {
+    QString path = QString::fromStdString(filePath);
+    QByteArray imageData;
+
+    if (path.endsWith(".mp3", Qt::CaseInsensitive)) {
+        TagLib::MPEG::File file(filePath.c_str());
+        if (file.hasID3v2Tag()) {
+            TagLib::ID3v2::Tag *tag = file.ID3v2Tag();
+            // APIC(Attached Picture) 프레임 찾기
+            auto frameList = tag->frameListMap()["APIC"];
+            if (!frameList.isEmpty()) {
+                auto *frame = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frameList.front());
+                if (frame) {
+                    imageData = QByteArray(frame->picture().data(), frame->picture().size());
+                }
+            }
+        }
+    } else if (path.endsWith(".flac", Qt::CaseInsensitive)) {
+        TagLib::FLAC::File file(filePath.c_str());
+        const TagLib::List<TagLib::FLAC::Picture*>& picList = file.pictureList();
+        if (!picList.isEmpty()) {
+            TagLib::FLAC::Picture *pic = picList.front();
+            imageData = QByteArray(pic->data().data(), pic->data().size());
+        }
+    }
+
+    // OPUS나 OGG는 보통 외부 파일(cover.jpg)을 쓰거나 다른 규격을 쓰므로 일단 생략!
+    return imageData;
 }

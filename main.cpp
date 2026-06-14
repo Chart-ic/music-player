@@ -1,18 +1,28 @@
+// main.cpp 내부
+
 #include <QApplication>
-
-// 🌟 [핵심] 다른 어떤 파일보다 무조건 '먼저' 알맹이를 생성하도록 맨 위로 올림!
-#define MINIAUDIO_IMPLEMENTATION
-#include "separated_class/AudioEngine.h"
-
-// 💡 이제 여기서 불러오는 MusicPlayerWindow.h는 중복 방지 시스템 덕분에
-// AudioEngine.h를 또 부르지 않고 안전하게 넘어감!
+#include <QFontDatabase>
 #include "separated_class/MusicPlayerWindow.h"
 
 int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
+    QApplication a(argc, argv);
 
-    MusicPlayerWindow window;
-    window.show();
+    // 🌟 1. 얇은 폰트와 굵은 폰트 둘 다 메모리에 로드!
+    QFontDatabase::addApplicationFont("fonts/Pretendard-Thin.ttf"); // 기본용 얇은 폰트
+    int boldId = QFontDatabase::addApplicationFont("fonts/Pretendard-Bold.ttf"); // 강조용 굵은 폰트
 
-    return QApplication::exec();
+    if (boldId != -1) {
+        // 패밀리 이름 저장 ("Pretendard" 같은 이름이 들어감)
+        MusicPlayerWindow::customFontFamily = QFontDatabase::applicationFontFamilies(boldId).at(0);
+
+        // 🌟 2. 앱 전체 기본 폰트는 'Thin'으로 세팅!
+        QFont defaultFont(MusicPlayerWindow::customFontFamily);
+        defaultFont.setWeight(QFont::Thin); // Thin이 너무 안 보이면 QFont::Light 나 QFont::Normal 로 바꿔도 됨!
+        a.setFont(defaultFont);
+    }
+
+    MusicPlayerWindow w;
+    w.show();
+
+    return a.exec();
 }

@@ -3,13 +3,12 @@
 
 #include <QWidget>
 #include <QLabel>
-#include <QSlider>
 #include <QPushButton>
-#include <QCloseEvent>
+#include <QTableWidget>
+#include <QSlider>
 #include <QTimer>
-#include <QListWidget>
 #include <QComboBox>
-#include "separated_class/AudioEngine.h" // 경로 일치 확인 필요 (프로젝트 루트 기준인지)
+#include "AudioEngine.h"
 
 class MusicPlayerWindow : public QWidget {
     Q_OBJECT
@@ -18,39 +17,48 @@ public:
     explicit MusicPlayerWindow(QWidget *parent = nullptr);
     ~MusicPlayerWindow() override;
 
+    // font
+    static QString customFontFamily;
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void slotPlay();
-    void slotPause();
-    void slotSeek(int value);
-    void slotUpdateProgress() const;
     void slotOpenFile();
     void slotOpenFolder();
-    void slotPlayListItem(const QListWidgetItem* item);
-    void slotSortPlaylist(int index) const;
+    void slotPlay();
+    void slotPause();
+    void slotUpdateProgress() const; // 🌟 const 장착
+    void slotSeek(int value);
+    void slotPlayTableItem(int row, int column);
+    void slotVolumeChanged(int value);
+    void slotNext() const;           // 🌟 const 장착
+    void slotPrev() const;           // 🌟 const 장착
 
 private:
-    void savePlaylist() const;
-    void loadPlaylist() const;
+    void setupUI();
+    void loadPlaylist() const;       // 🌟 const 장착
+    void savePlaylist() const;       // 🌟 const 장착
+    void addSongToTable(const QString& path, const MusicMetadata& meta) const;
 
-private:
     AudioEngine player;
-    QTimer* updateTimer{nullptr};
 
-    QLabel* lblTitle{nullptr};
-    QLabel* lblArtist{nullptr};
-    QLabel* lblAlbum{nullptr};
-    QSlider* sliderPosition{nullptr};
+    QLabel *lblAlbumArt;
+    QLabel *lblTitle;
+    QLabel *lblArtist;
+    QLabel *lblAlbum;
+    QLabel *lblSpecs;
 
-    QPushButton* btnFileOpen{nullptr};
-    QPushButton* btnFolderOpen{nullptr};
-    QPushButton* btnPlay{nullptr};
-    QPushButton* btnPause{nullptr};
+    QTableWidget *playlistTable;
 
-    QListWidget* playlistWidget{nullptr};
-    QComboBox* comboSort{nullptr};
+    QSlider *sliderPosition;
+    QSlider *sliderVolume;
+
+    QPushButton *btnPlay, *btnPause, *btnPrev, *btnNext;
+    QPushButton *btnShuffle, *btnRepeat;
+    QPushButton *btnFileOpen, *btnFolderOpen;
+
+    QTimer *updateTimer;
 };
 
 #endif // MUSICPLAYERWINDOW_H
