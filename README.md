@@ -56,7 +56,7 @@ sudo apt install build-essential cmake qt6-base-dev libtag1-dev
 Installation & Build (설치 및 빌드)
 
 ```
-git clone https://github.com/Chart-ic/music-player
+git clone https://github.com/Chart-ic/music-player.git
 cd music-player
 ```
 
