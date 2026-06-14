@@ -14,7 +14,7 @@
 QString MusicPlayerWindow::customFontFamily = "";
 
 MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
-    setWindowTitle("Modern Hi-Res Player");
+    setWindowTitle("PSMP - Personal Simple Music Player");
     resize(1000, 600);
 
     setupUI();
