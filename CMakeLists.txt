@@ -28,6 +28,8 @@ add_executable(music_player
         separated_class/MusicPlayerWindow.cpp
         separated_class/AudioEngine.h
         separated_class/AudioEngine.cpp
+        separated_class/MarqueeLabel.h
+        separated_class/MarqueeLabel.cpp
 )
 
 # 🐧 🌟 [리눅스 치트키] 실행 파일 실행 시 같은 폴더의 .so를 바로 바라보도록 RPATH 설정 강제

@@ -13,8 +13,9 @@ struct MusicMetadata {
     int sampleRate = 0;
     int channels = 0;
     int bitDepth = 0;
+    int track = 0;         // 🌟 추가: 트랙 번호
+    int disc = 0;          // 🌟 추가: 디스크 번호
 };
-
 class AudioEngine {
 public:
     AudioEngine();

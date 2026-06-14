@@ -8,8 +8,8 @@ int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
 
     // 🌟 1. 얇은 폰트와 굵은 폰트 둘 다 메모리에 로드!
-    QFontDatabase::addApplicationFont("fonts/Pretendard-Thin.ttf"); // 기본용 얇은 폰트
-    int boldId = QFontDatabase::addApplicationFont("fonts/Pretendard-Bold.ttf"); // 강조용 굵은 폰트
+    QFontDatabase::addApplicationFont("assets/fonts/PretendardJP-Thin.ttf"); // 기본용 얇은 폰트
+    int boldId = QFontDatabase::addApplicationFont("assets/fonts/PretendardJP-Bold.ttf"); // 강조용 굵은 폰트
 
     if (boldId != -1) {
         // 패밀리 이름 저장 ("Pretendard" 같은 이름이 들어감)

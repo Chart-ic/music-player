@@ -4,7 +4,6 @@
 #include <taglib/tag.h>
 
 // Album Art
-
 #include <taglib/mpegfile.h>
 #include <taglib/id3v2tag.h>
 #include <taglib/attachedpictureframe.h>
@@ -18,7 +17,8 @@
 #include <taglib/flacproperties.h>
 #include <taglib/wavproperties.h>
 
-
+#include <taglib/tpropertymap.h> // PropertyMap
+#include <QFileInfo>             // fallbackName
 
 AudioEngine::AudioEngine() : currentStream(0) {
     // 🌟 1. 리눅스 사운드 장치 초기화 (기본 출력 장치, 44100Hz 기반 시스템 초기화)
@@ -103,41 +103,52 @@ double AudioEngine::getTotalTime() const {
     return BASS_ChannelBytes2Seconds(currentStream, bytes);
 }
 
-// 🌟 9. 기존에 귀신같이 성공했던 TagLib 기반 메타데이터 추출 로직 결합!
 MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
     MusicMetadata meta;
-    meta.title = "Unknown Title";
-    meta.artist = "Unknown Artist";
-    meta.album = "Unknown Album";
+    // 🌟 fallbackName 선언 (제목이 없을 경우 파일 이름으로 대체)
+    QString fallbackName = QFileInfo(QString::fromStdString(filePath)).fileName();
 
     try {
-        // TagLib 파일 레퍼런스 생성 (유니코드 처리를 위해 리눅스 빌드 환경 대응)
         TagLib::FileRef f(filePath.c_str());
         if (!f.isNull() && f.tag()) {
-            TagLib::Tag* tag = f.tag();
+            meta.title = f.tag()->title().isEmpty() ? fallbackName.toStdString() : f.tag()->title().to8Bit(true);
+            meta.artist = f.tag()->artist().isEmpty() ? "Unknown Artist" : f.tag()->artist().to8Bit(true);
+            meta.album = f.tag()->album().isEmpty() ? "Unknown Album" : f.tag()->album().to8Bit(true);
 
+            // 🌟 트랙 번호 가져오기
+            meta.track = f.tag()->track();
+
+            // 🌟 디스크 번호 가져오기
+            if (f.file() && f.file()->properties().contains("DISCNUMBER")) {
+                meta.disc = f.file()->properties()["DISCNUMBER"].front().toInt();
+            }
+
+            // 오디오 물리 속성 가져오기
             if (f.audioProperties()) {
                 meta.bitrate = f.audioProperties()->bitrate();
                 meta.sampleRate = f.audioProperties()->sampleRate();
                 meta.channels = f.audioProperties()->channels();
 
-                // 🌟 비트 심도 추출 (FLAC, WAV 지원) - 함수명 bitsPerSample()로 수정!
+                // 비트 심도 추출 (FLAC, WAV 지원)
                 if (const auto* flacProps = dynamic_cast<const TagLib::FLAC::Properties*>(f.audioProperties())) {
                     meta.bitDepth = flacProps->bitsPerSample();
                 } else if (const auto* wavProps = dynamic_cast<const TagLib::RIFF::WAV::Properties*>(f.audioProperties())) {
                     meta.bitDepth = wavProps->bitsPerSample();
                 } else {
-                    meta.bitDepth = 0; // MP3 등은 0으로 처리
+                    meta.bitDepth = 0;
                 }
             }
-
-            // 태그 정보가 비어있지 않다면 UTF-8 문자열로 안전하게 변환하여 저장
-            if (!tag->title().isEmpty())  meta.title  = tag->title().to8Bit(true);
-            if (!tag->artist().isEmpty()) meta.artist = tag->artist().to8Bit(true);
-            if (!tag->album().isEmpty())  meta.album  = tag->album().to8Bit(true);
+        } else {
+            // 태그가 아예 없는 파일인 경우
+            meta.title = fallbackName.toStdString();
+            meta.artist = "Unknown Artist";
+            meta.album = "Unknown Album";
         }
     } catch (...) {
-        std::cerr << "[TagLib] 메타데이터 읽기 실패: " << filePath << std::endl;
+        // 읽기 실패 시 최소한 파일 이름이라도 살림
+        meta.title = fallbackName.toStdString();
+        meta.artist = "Unknown Artist";
+        meta.album = "Unknown Album";
     }
 
     return meta;

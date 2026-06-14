@@ -9,6 +9,8 @@
 #include <QTimer>
 #include <QComboBox>
 #include "AudioEngine.h"
+#include "MarqueeLabel.h"
+
 
 class MusicPlayerWindow : public QWidget {
     Q_OBJECT
@@ -17,8 +19,8 @@ public:
     explicit MusicPlayerWindow(QWidget *parent = nullptr);
     ~MusicPlayerWindow() override;
 
-    // font
     static QString customFontFamily;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -26,25 +28,25 @@ protected:
 private slots:
     void slotOpenFile();
     void slotOpenFolder();
-    void slotPlay();
-    void slotPause();
-    void slotUpdateProgress() const; // 🌟 const 장착
-    void slotSeek(int value);
+    void slotPlayPause();
+    void slotUpdateProgress();
+    void slotSeek();
     void slotPlayTableItem(int row, int column);
     void slotVolumeChanged(int value);
-    void slotNext() const;           // 🌟 const 장착
-    void slotPrev() const;           // 🌟 const 장착
+    void slotNext();
+    void slotPrev();
+    void slotSortTable(int column); // 🌟 추가: 우리가 직접 제어할 정렬 함수!
 
 private:
     void setupUI();
-    void loadPlaylist() const;       // 🌟 const 장착
-    void savePlaylist() const;       // 🌟 const 장착
+    void loadPlaylist() const;
+    void savePlaylist() const;
     void addSongToTable(const QString& path, const MusicMetadata& meta) const;
 
     AudioEngine player;
 
     QLabel *lblAlbumArt;
-    QLabel *lblTitle;
+    MarqueeLabel *lblTitle;
     QLabel *lblArtist;
     QLabel *lblAlbum;
     QLabel *lblSpecs;
@@ -54,11 +56,24 @@ private:
     QSlider *sliderPosition;
     QSlider *sliderVolume;
 
-    QPushButton *btnPlay, *btnPause, *btnPrev, *btnNext;
-    QPushButton *btnShuffle, *btnRepeat;
+    QPushButton *btnPlayPause, *btnPrev, *btnNext;
     QPushButton *btnFileOpen, *btnFolderOpen;
 
     QTimer *updateTimer;
+
+    QPushButton *btnShuffle;
+    QPushButton *btnRepeat;
+
+    bool isShuffle = false; // 🌟 셔플 상태 기억
+    bool isRepeat = false;  // 🌟 한 곡 반복 상태 기억
+
+    int currentRow = -1;
+    bool isPlaying = false;
+    void playSongFromTable(int row);
+
+    // 🌟 추가: 현재 정렬 상태를 기억할 변수들
+    Qt::SortOrder currentSortOrder = Qt::AscendingOrder;
+    int currentSortColumn = -1;
 };
 
 #endif // MUSICPLAYERWINDOW_H
