@@ -71,12 +71,12 @@ make -j$(nproc)
 ```
 
 # 🗺️ Roadmap (향후 로드맵)
-  [x] C++20 / Qt6 기반 기본 아키텍처 수립
-  [x] 비동기 멀티스레드 메타데이터 로더 구현
-  [x] MarqueeLabel을 이용한 긴 제목 스크롤링 최적화
-  [ ] Vulkan 네이티브 지원: OS별 그래픽 드라이버 오버헤드 최소화 및 CPU 부담 경감 (Qt RHI 인프라 활용)
-  [ ] 크로스 플랫폼 배포 가동: Linux 테스팅 완료 후 Windows, Android, macOS 순차 빌드 자동화 시동
-  [ ] Android 전용 모바일 UI 탑재: 모바일 터치 패러다임에 맞춘 Qt Quick (QML) 레이어 설계
+  - [x] C++20 / Qt6 기반 기본 아키텍처 수립
+  - [x] 비동기 멀티스레드 메타데이터 로더 구현
+  - [x] MarqueeLabel을 이용한 긴 제목 스크롤링 최적화
+  - [ ] Vulkan 네이티브 지원: OS별 그래픽 드라이버 오버헤드 최소화 및 CPU 부담 경감 (Qt RHI 인프라 활용)
+  - [ ] 크로스 플랫폼 배포 가동: Linux 테스팅 완료 후 Windows, Android, macOS 순차 빌드 자동화 시동
+  - [ ] Android 전용 모바일 UI 탑재: 모바일 터치 패러다임에 맞춘 Qt Quick (QML) 레이어 설계
 
 # 📄 License
 
