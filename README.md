@@ -1,10 +1,6 @@
 # 🎵 PSMP (Personal Simple Music Player)
 
 <p align="center">
-  <img src="assets/icons/app_logo.png" alt="PSMP Logo" width="120" height="120" onerror="this.style.display='none'"/>
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/C%2B%2B-20-blue?style=for-the-badge&logo=c%2B%2B" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6.x-green?style=for-the-badge&logo=qt" alt="Qt6">
   <img src="https://img.shields.io/badge/Audio%20Engine-BASS-orange?style=for-the-badge" alt="BASS Engine">
