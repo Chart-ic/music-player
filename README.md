@@ -79,5 +79,7 @@ make -j$(nproc)
   - [ ] Android 전용 모바일 UI 탑재: 모바일 터치 패러다임에 맞춘 Qt Quick (QML) 레이어 설계
 
 # 📄 License
+위에 라이센스 탭을 확인하십시오
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+# etc..
+- 건의/개선 사항 모두 긍정적으로 검토하겠습니당
