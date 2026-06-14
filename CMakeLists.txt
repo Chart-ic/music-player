@@ -20,10 +20,21 @@ if(ANDROID)
     # 📱 안드로이드 모바일 UI(QML/Quick) 가동을 위한 핵심 Qt6 패키지 로드
     find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 
-    # 안드로이드 스마트폰(ARM 64비트 프로세서) 전용 BASS 라이브러리 경로 지정
-    # 💡 팁: BASS for Android 패키지에서 추출한 arm64-v8a 용 .so 파일들이 이 경로에 위치해야 합니다.
-    set(BASS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/bass/libs/android/arm64-v8a)
+    # 🌟 [여기서부터 수정!] 타겟 아키텍처(CPU)에 따라 BASS 경로를 다르게 꽂아줍니다!
+    if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+        message(STATUS "[빌드 타겟] 64-bit (arm64-v8a) 엔진 세팅 중...")
+        set(BASS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/bass/libs/android/arm64-v8a)
 
+    elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
+        message(STATUS "[빌드 타겟] 32-bit (armeabi-v7a) 엔진 세팅 중...")
+        set(BASS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/bass/libs/android/armeabi-v7a)
+
+    else()
+        # 혹시 x86 폰(에뮬레이터 등)으로 빌드하려고 하면 안전하게 멈춤!
+        message(FATAL_ERROR "지원하지 않는 안드로이드 아키텍처입니다: ${CMAKE_ANDROID_ARCH_ABI}")
+    endif()
+
+    # 결정된 폴더(BASS_LIB_DIR)에서 .so 파일들을 찾아옵니다.
     find_library(BASS_LIBRARY NAMES bass HINTS ${BASS_LIB_DIR})
     find_library(BASSFLAC_LIBRARY NAMES bassflac HINTS ${BASS_LIB_DIR})
     find_library(BASSOPUS_LIBRARY NAMES bassopus HINTS ${BASS_LIB_DIR})
