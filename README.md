@@ -70,9 +70,9 @@ make -j$(nproc)
 
 생성된 파일을 실행합니다.
 
-Bash
-
+```
 ./music_player
+```
 
 # 🗺️ Roadmap (향후 로드맵)
   [x] C++20 / Qt6 기반 기본 아키텍처 수립
