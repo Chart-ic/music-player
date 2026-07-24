@@ -1,5 +1,5 @@
 # music-player
-BASS와 Qt를 이용하여 제작되고 있는 간단한 플레이어 입니다.
+[miniaudio](https://github.com/mackron/miniaudio) 와 Qt를 이용하여 제작되고 있는 간단한 플레이어 입니다.
 
 # 지원하는(지원할) 플렛폼
 현재 지원
@@ -11,4 +11,4 @@ BASS와 Qt를 이용하여 제작되고 있는 간단한 플레이어 입니다.
   - Android
 
 # 지원하는 코덱
-mp3, Vorbis, Opus(*.ogg, *.opus), FLAC, PCM
+상단의 miniaudio repository를 참조하세요.
