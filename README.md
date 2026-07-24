@@ -8,7 +8,7 @@
 지원 예정
   - Windows
   - macOS
-  - Android
+  - ~~Android~~(제작 중단)
 
 # 지원하는 코덱
 상단의 miniaudio repository를 참조하세요.
