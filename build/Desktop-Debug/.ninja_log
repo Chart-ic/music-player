@@ -1,0 +1,11 @@
+# ninja log v7
+3	327	1781460509614366972	music_player_autogen/timestamp	5e08a2cf2fbebfb9
+3	327	1781460509614366972	music_player_autogen/mocs_compilation.cpp	5e08a2cf2fbebfb9
+3	327	1781460509614366972	/home/chartic/CLionProjects/music_player/build/Desktop-Debug/music_player_autogen/timestamp	5e08a2cf2fbebfb9
+3	327	1781460509614366972	/home/chartic/CLionProjects/music_player/build/Desktop-Debug/music_player_autogen/mocs_compilation.cpp	5e08a2cf2fbebfb9
+328	3095	1781460509625396368	CMakeFiles/music_player.dir/separated_class/MarqueeLabel.cpp.o	54a1985bb97c3957
+327	3182	1781460509625233239	CMakeFiles/music_player.dir/separated_class/AudioEngine.cpp.o	c3ae4b37290e609f
+327	3087	1781460509624927111	CMakeFiles/music_player.dir/main.cpp.o	8a70b293f25aec3a
+327	3190	1781460509623366677	CMakeFiles/music_player.dir/music_player_autogen/mocs_compilation.cpp.o	f4484ef21bb9ab76
+327	4231	1781460509625082724	CMakeFiles/music_player.dir/separated_class/MusicPlayerWindow.cpp.o	2eb3197230bee150
+4319	4683	1781460161473856116	music_player	83f284dfc0c3a92f

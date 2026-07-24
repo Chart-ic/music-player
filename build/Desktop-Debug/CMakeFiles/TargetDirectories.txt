@@ -1,0 +1,5 @@
+/home/chartic/CLionProjects/music_player/build/Desktop-Debug/CMakeFiles/music_player.dir
+/home/chartic/CLionProjects/music_player/build/Desktop-Debug/CMakeFiles/edit_cache.dir
+/home/chartic/CLionProjects/music_player/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
+/home/chartic/CLionProjects/music_player/build/Desktop-Debug/CMakeFiles/music_player_autogen_timestamp_deps.dir
+/home/chartic/CLionProjects/music_player/build/Desktop-Debug/CMakeFiles/music_player_autogen.dir
