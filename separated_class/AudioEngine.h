@@ -2,44 +2,51 @@
 #define AUDIOENGINE_H
 
 #include <string>
-#include "../libs/bass/bass.h" // 🌟 대망의 BASS 헤더 장착!
-#include <QBitArray>
-// 기존에 사용하던 메타데이터 구조체 유지
+#include <QByteArray>
+#include "../libs/miniaudio.h"
+
 struct MusicMetadata {
     std::string title;
     std::string artist;
     std::string album;
-    int bitrate = 0;
-    int sampleRate = 0;
-    int channels = 0;
-    int bitDepth = 0;
-    int track = 0;         // 🌟 추가: 트랙 번호
-    int disc = 0;          // 🌟 추가: 디스크 번호
+    int duration{0};
+    int track{0};
+    int disc{0};
+    int channels{2};
+    int bitDepth{16};
+    int sampleRate{48000};
+    int bitrate{320};
 };
+
 class AudioEngine {
 public:
     AudioEngine();
     ~AudioEngine();
 
+    // initDevice()는 이제 load() 안에서 동적으로 처리하므로 삭제해도 됨!
+
     bool load(const std::string& filePath);
     void play();
     void pause();
-    void setPosition(double seconds);
+    void resume();
+    void stop();
+    void setVolume(float volume);
+    void setPosition(float seconds);
 
-    double getCurrentTime() const;
-    double getTotalTime() const;
+    [[nodiscard]] float getTotalTime() const;
+    [[nodiscard]] float getCurrentTime() const;
+    [[nodiscard]] bool isPlaying() const;
 
-    // 플레이리스트 불러올 때 썼던 정적 함수 유지
     static MusicMetadata getMetadata(const std::string& filePath);
-
-
-    static QByteArray getAlbumArt(const std::string& filePath); // 🌟 앨범 아트 추출 함수 추가!
-
-    // volume
-    void setVolume(float volume); // 0.0 ~ 1.0 사이의 볼륨 값
+    static QByteArray getAlbumArt(const std::string& filePath);
 
 private:
-    HSTREAM currentStream; // 🌟 BASS에서 재생 중인 곡을 제어하는 핸들(ID) 변수
+    ma_device device{};
+    ma_decoder m_decoder{}; // 🌟 핵심! 엔진 대신 디코더를 직접 씁니다.
+    bool m_isLoaded{false};
+
+    // 디바이스 콜백 함수
+    static void data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount);
 };
 
-#endif // AUDIOENGINE_H
+#endif

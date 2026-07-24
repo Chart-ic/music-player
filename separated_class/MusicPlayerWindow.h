@@ -1,8 +1,6 @@
 #ifndef MUSICPLAYERWINDOW_H
 #define MUSICPLAYERWINDOW_H
 
-#include <QWidget>
-#include <QLabel>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QSlider>
@@ -45,27 +43,31 @@ private:
 
     AudioEngine player;
 
-    QLabel *lblAlbumArt;
-    MarqueeLabel *lblTitle;
-    QLabel *lblArtist;
-    QLabel *lblAlbum;
-    QLabel *lblSpecs;
+    QLabel *lblAlbumArt{nullptr};
+    MarqueeLabel *lblTitle{nullptr};
+    QLabel *lblArtist{nullptr};
+    QLabel *lblAlbum{nullptr};
+    QLabel *lblSpecs{nullptr};
 
-    QTableWidget *playlistTable;
+    QTableWidget *playlistTable{nullptr};
 
-    QSlider *sliderPosition;
-    QSlider *sliderVolume;
+    QSlider *sliderPosition{nullptr};
+    QSlider *sliderVolume{nullptr};
 
-    QPushButton *btnPlayPause, *btnPrev, *btnNext;
-    QPushButton *btnFileOpen, *btnFolderOpen;
+    QPushButton *btnPlayPause{nullptr};
+    QPushButton *btnPrev{nullptr};
+    QPushButton *btnNext{nullptr};
+    QPushButton *btnFileOpen{nullptr};
+    QPushButton *btnFolderOpen{nullptr};
 
-    QTimer *updateTimer;
+    QTimer *updateTimer{nullptr};
 
-    QPushButton *btnShuffle;
-    QPushButton *btnRepeat;
+    QPushButton *btnShuffle{nullptr};
+    QPushButton *btnRepeat{nullptr};
+    qint64 lastPlayPauseTime = 0; // 🌟 추가: 마지막으로 재생/일시정지를 누른 시간
 
-    bool isShuffle = false; // 🌟 셔플 상태 기억
-    bool isRepeat = false;  // 🌟 한 곡 반복 상태 기억
+    bool isShuffle = false;
+    bool isRepeat = false;
 
     int currentRow = -1;
     bool isPlaying = false;

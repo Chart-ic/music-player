@@ -1,5 +1,3 @@
-// main.cpp 내부
-
 #include <QApplication>
 #include <QFontDatabase>
 #include "separated_class/MusicPlayerWindow.h"
@@ -17,12 +15,15 @@ int main(int argc, char *argv[]) {
 
         // 🌟 2. 앱 전체 기본 폰트는 'Thin'으로 세팅!
         QFont defaultFont(MusicPlayerWindow::customFontFamily);
-        defaultFont.setWeight(QFont::Thin); // Thin이 너무 안 보이면 QFont::Light 나 QFont::Normal 로 바꿔도 됨!
-        a.setFont(defaultFont);
+        defaultFont.setWeight(QFont::Thin);
+
+        // 🌟 Clang-Tidy 적용: a.setFont() -> QApplication::setFont()
+        QApplication::setFont(defaultFont);
     }
 
     MusicPlayerWindow w;
     w.show();
 
-    return a.exec();
+    // 🌟 Clang-Tidy 적용: a.exec() -> QApplication::exec()
+    return QApplication::exec();
 }

@@ -1,10 +1,11 @@
+#include <algorithm>
+
 #include "MusicPlayerWindow.h"
-#include <QVBoxLayout>
+
 #include <QHBoxLayout>
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QFileInfo>
-#include <QJsonDocument>
 #include <QThread>     // background service
 #include <QMetaObject> // 스레드 간 안전한 통신(보고)용
 #include <QJsonObject>
@@ -13,8 +14,12 @@
 #include <QDirIterator>
 #include <QStyle>       // 슬라이더 클릭 위치 계산용
 #include <QMouseEvent>  // 마우스 클릭 이벤트 감지용
-#include <algorithm> // std::sort 사용을 위해 추가
 #include <QRandomGenerator> // 셔플 기능을 위한 랜덤 엔진
+#include <QSplitter> // 파일 상단에 추가!
+#include <QShortcut>
+#include <QDateTime>
+
+
 QString MusicPlayerWindow::customFontFamily = "";
 
 MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
@@ -31,136 +36,186 @@ MusicPlayerWindow::MusicPlayerWindow(QWidget *parent) : QWidget(parent) {
 }
 
 void MusicPlayerWindow::setupUI() {
+    // --------------------------------------------------
+    // 메인 레이아웃 및 QSplitter 생성
+    // --------------------------------------------------
     auto* mainLayout = new QHBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
 
-    // --- [좌측 섹션] ---
-    auto* leftLayout = new QVBoxLayout(); // NOLINT
+    auto* splitter = new QSplitter(Qt::Horizontal, this);
+    splitter->setChildrenCollapsible(false);
+
+    // ==================================================
+    // 1. [좌측 패널] - 스포티파이/멜론 스타일 (하단 고정)
+    // ==================================================
+    auto* leftWidget = new QWidget(this);
+    leftWidget->setMinimumWidth(320);
+    leftWidget->setMaximumWidth(420);
+
+    auto* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(20, 20, 20, 20);
+    leftLayout->setSpacing(12);
 
-    lblAlbumArt = new QLabel(this);
-    lblAlbumArt->setFixedSize(300, 300);
-    lblAlbumArt->setStyleSheet("background-color: #333; border-radius: 15px; color: white;");
+    // --------------------------------------------------
+    // 1-A. [상단 영역] 앨범 아트 & 곡 정보
+    // --------------------------------------------------
+    lblAlbumArt = new QLabel(leftWidget);
+    lblAlbumArt->setMinimumSize(250, 250);
+    lblAlbumArt->setMaximumSize(320, 320);
+    lblAlbumArt->setScaledContents(true);
     lblAlbumArt->setAlignment(Qt::AlignCenter);
     lblAlbumArt->setText("Album Art");
+    lblAlbumArt->setStyleSheet("background-color: #2b2b2b; border-radius: 8px; color: #888888;");
 
-    lblTitle = new MarqueeLabel(this);
-    lblTitle->setText("Song");
+    leftLayout->addWidget(lblAlbumArt, 0, Qt::AlignCenter);
 
-    // 🌟 추가: 전광판 글자가 길어도 레이아웃을 밀어내지 않고 마스킹되게 사이즈 정책 강제!
-    lblTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    lblTitle->setMinimumWidth(300); // 앨범 아트(300px)와 가로 길이 맞춤
+    // [1-2] 곡 정보 (제목, 아티스트, 앨범, 스펙) - 🌟 폰트 크기 및 굵기 업그레이드!
+    lblTitle = new MarqueeLabel(leftWidget);
+    lblTitle->setText("재생 중인 곡 없음");
+    lblTitle->setAlignment(Qt::AlignCenter);
+    // 제목은 제일 눈에 띄게 크고 굵게 (18px, bold)
+    lblTitle->setStyleSheet("font-size: 18px; font-weight: bold; color: #ffffff;");
 
-    QFont titleFont(customFontFamily);
-    titleFont.setPointSize(18);
-    titleFont.setWeight(QFont::Bold);
-    lblTitle->setFont(titleFont);
+    lblArtist = new QLabel("아티스트 정보 없음", leftWidget);
+    lblArtist->setAlignment(Qt::AlignCenter);
+    // 아티스트는 중간 크기 (14px)
+    lblArtist->setStyleSheet("color: #b3b3b3; font-size: 14px; font-weight: 500;");
 
-    lblArtist = new QLabel("Artist", this);
-    lblAlbum = new QLabel("Album", this);
+    lblAlbum = new QLabel("앨범 정보 없음", leftWidget);
+    lblAlbum->setAlignment(Qt::AlignCenter);
+    // 앨범명은 살짝 작게 (13px)
+    lblAlbum->setStyleSheet("color: #888888; font-size: 13px;");
 
-    lblSpecs = new QLabel("Specs", this);
-    lblSpecs->setStyleSheet("font-size: 11pt; color: #aaaaaa;");
+    lblSpecs = new QLabel("Audio Spec: -", leftWidget);
+    lblSpecs->setAlignment(Qt::AlignCenter);
+    // 오디오 스펙도 기존 11px에서 12px로 살짝 키움
+    lblSpecs->setStyleSheet("color: #666666; font-size: 12px;");
 
-    // 재생 버튼 통합! + 컨트롤 레이아웃 부분 수정 (셔플과 반복 버튼 추가!)
-    auto* ctrlLayout = new QHBoxLayout(); // NOLINT
-    btnShuffle = new QPushButton("🔀", this);
-    btnPrev = new QPushButton("⏮", this);
-    btnPlayPause = new QPushButton("▶", this);
-    btnNext = new QPushButton("⏭", this);
-    btnRepeat = new QPushButton("🔁", this);
-
-    btnShuffle->setCheckable(true); // 토글(On/Off) 가능하게 설정
-    btnRepeat->setCheckable(true);
-
-    ctrlLayout->addWidget(btnShuffle);
-    ctrlLayout->addWidget(btnPrev);
-    ctrlLayout->addWidget(btnPlayPause);
-    ctrlLayout->addWidget(btnNext);
-    ctrlLayout->addWidget(btnRepeat);
-
-    sliderPosition = new QSlider(Qt::Horizontal, this);
-    sliderPosition->installEventFilter(this); // 클릭으로 위치 이동하게 감지기 부착!
-
-    auto* volLayout = new QHBoxLayout(); // NOLINT
-    auto* lblVolIcon = new QLabel("🔊", this);
-    sliderVolume = new QSlider(Qt::Horizontal, this);
-    sliderVolume->setRange(0, 100);
-    sliderVolume->setValue(80);
-    volLayout->addWidget(lblVolIcon);
-    volLayout->addWidget(sliderVolume);
-
-    leftLayout->addWidget(lblAlbumArt);
-    leftLayout->addSpacing(20);
     leftLayout->addWidget(lblTitle);
     leftLayout->addWidget(lblArtist);
     leftLayout->addWidget(lblAlbum);
     leftLayout->addWidget(lblSpecs);
-    leftLayout->addWidget(sliderPosition);
-    leftLayout->addLayout(ctrlLayout);
-    leftLayout->addLayout(volLayout);
+
+    // 🌟 [핵심 포인트] 상단 곡정보와 하단 버튼들 사이를 밀어내는 강력한 공간(스프링)!
     leftLayout->addStretch();
 
-    // --- [우측 섹션] ---
-    auto* rightLayout = new QVBoxLayout(); // NOLINT
+    // --------------------------------------------------
+    // 1-B. [하단 영역] 재생 슬라이더 & 컨트롤 버튼들 (바닥 고정)
+    // --------------------------------------------------
+    // 재생 위치 슬라이더
+    sliderPosition = new QSlider(Qt::Horizontal, leftWidget);
+    sliderPosition->setRange(0, 1000);
+    sliderPosition->setValue(0);
+    sliderPosition->installEventFilter(this);
+    leftLayout->addWidget(sliderPosition);
 
-    // 우측 버튼과 표의 폰트 크기를 작게(10pt) 줄이기!
-    QFont smallFont(customFontFamily);
-    smallFont.setPointSize(10);
+    // 재생 제어 버튼 (셔플, 이전, 재생, 다음, 반복)
+    auto* btnLayout = new QHBoxLayout();
+    btnLayout->setSpacing(6);
 
-    auto* topMenuLayout = new QHBoxLayout(); // NOLINT
-    btnFileOpen = new QPushButton("파일 추가", this);
-    btnFolderOpen = new QPushButton("폴더 추가", this);
+    btnShuffle = new QPushButton("🔀", leftWidget);
+    btnPrev = new QPushButton("⏮", leftWidget);
+    btnPlayPause = new QPushButton("▶", leftWidget);
+    btnNext = new QPushButton("⏭", leftWidget);
+    btnRepeat = new QPushButton("🔁", leftWidget);
 
-    btnFileOpen->setFont(smallFont);   // 폰트 작게 적용
-    btnFolderOpen->setFont(smallFont); // 폰트 작게 적용
+    btnPlayPause->setMinimumWidth(50);
 
-    topMenuLayout->addWidget(btnFileOpen);
-    topMenuLayout->addWidget(btnFolderOpen);
-    topMenuLayout->addStretch();
+    btnLayout->addWidget(btnShuffle);
+    btnLayout->addWidget(btnPrev);
+    btnLayout->addWidget(btnPlayPause);
+    btnLayout->addWidget(btnNext);
+    btnLayout->addWidget(btnRepeat);
 
-    playlistTable = new QTableWidget(0, 3, this);
-    playlistTable->setFont(smallFont); // 재생 목록 폰트도 작게 적용
-    playlistTable->setHorizontalHeaderLabels({"제목", "아티스트", "앨범"});
+    leftLayout->addLayout(btnLayout);
+
+    // 볼륨 컨트롤
+    auto* volLayout = new QHBoxLayout();
+    auto* lblVolIcon = new QLabel("🔊", leftWidget);
+    sliderVolume = new QSlider(Qt::Horizontal, leftWidget);
+    sliderVolume->setRange(0, 100);
+    sliderVolume->setValue(80);
+
+    volLayout->addWidget(lblVolIcon);
+    volLayout->addWidget(sliderVolume);
+    leftLayout->addLayout(volLayout);
+
+    // 파일 / 폴더 열기 버튼
+    auto* openLayout = new QHBoxLayout();
+    btnFileOpen = new QPushButton("파일 열기", leftWidget);
+    btnFolderOpen = new QPushButton("폴더 열기", leftWidget);
+
+    openLayout->addWidget(btnFileOpen);
+    openLayout->addWidget(btnFolderOpen);
+    leftLayout->addLayout(openLayout);
+
+    // ==================================================
+    // 2. [우측 패널] - 재생목록 테이블 영역
+    // ==================================================
+    auto* rightWidget = new QWidget(this);
+    auto* rightLayout = new QVBoxLayout(rightWidget);
+    rightLayout->setContentsMargins(10, 20, 20, 20);
+
+    playlistTable = new QTableWidget(rightWidget);
+    playlistTable->setColumnCount(5);
+    playlistTable->setHorizontalHeaderLabels({"제목", "아티스트", "앨범", "재생시간", "경로"});
     playlistTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    playlistTable->setSelectionMode(QAbstractItemView::SingleSelection);
     playlistTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     playlistTable->setAlternatingRowColors(true);
-    playlistTable->setWordWrap(false); // 추가: 글자가 길어도 칸이 안 늘어나고 '...'으로 예쁘게 잘림!
-    playlistTable->horizontalHeader()->setSortIndicatorShown(true);
-    playlistTable->verticalHeader()->setVisible(false);
-
+    playlistTable->horizontalHeader()->setStretchLastSection(true);
     playlistTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    // 1번(아티스트), 2번(앨범) 열은 사용자가 마우스로 크기 조절 가능하게 둠
-    playlistTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
-    playlistTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive);
+    playlistTable->setColumnHidden(4, true);
 
-    rightLayout->addLayout(topMenuLayout);
     rightLayout->addWidget(playlistTable);
 
-    // 🌟 (이렇게 변경!)
-    mainLayout->addLayout(leftLayout, 0);  // 좌측은 앨범아트(300px) 크기에 맞춰서 고정!
-    mainLayout->addLayout(rightLayout, 1); // 창을 늘리면 우측(테이블)이 남는 공간을 다 빨아들임!
+    // ==================================================
+    // 3. [스플리터 구성 및 메인 레이아웃 추가]
+    // ==================================================
+    splitter->addWidget(leftWidget);
+    splitter->addWidget(rightWidget);
 
-    // 이벤트 연결 (재생 슬라이더는 드래그 중(Moved)이 아니라 놨을 때(Released)만 반영되게 수정!)
+    splitter->setStretchFactor(0, 0);
+    splitter->setStretchFactor(1, 1);
+
+    mainLayout->addWidget(splitter);
+
+    // ==================================================
+    // 4. [시그널 - 슬롯 이벤트 연결]
+    // ==================================================
     connect(btnPlayPause, &QPushButton::clicked, this, &MusicPlayerWindow::slotPlayPause);
+    connect(btnPrev, &QPushButton::clicked, this, &MusicPlayerWindow::slotPrev);
+    connect(btnNext, &QPushButton::clicked, this, &MusicPlayerWindow::slotNext);
     connect(btnFileOpen, &QPushButton::clicked, this, &MusicPlayerWindow::slotOpenFile);
     connect(btnFolderOpen, &QPushButton::clicked, this, &MusicPlayerWindow::slotOpenFolder);
-    connect(playlistTable, &QTableWidget::cellDoubleClicked, this, &MusicPlayerWindow::slotPlayTableItem);
+
     connect(sliderPosition, &QSlider::sliderReleased, this, &MusicPlayerWindow::slotSeek);
     connect(sliderVolume, &QSlider::valueChanged, this, &MusicPlayerWindow::slotVolumeChanged);
-    connect(btnNext, &QPushButton::clicked, this, &MusicPlayerWindow::slotNext);
-    connect(btnPrev, &QPushButton::clicked, this, &MusicPlayerWindow::slotPrev);
+
+    connect(playlistTable, &QTableWidget::cellDoubleClicked, this, &MusicPlayerWindow::slotPlayTableItem);
     connect(playlistTable->horizontalHeader(), &QHeaderView::sectionClicked, this, &MusicPlayerWindow::slotSortTable);
 
-    // 2. 이벤트 연결 부분에 셔플/반복 클릭 이벤트 추가
-    // 셔플/반복 클릭 시 활성화되는 색상을 초록색에서 #3daee9(Breeze 블루)로 교체!
-    connect(btnShuffle, &QPushButton::clicked, this, [this](bool checked) {
-        isShuffle = checked;
-        btnShuffle->setStyleSheet(checked ? "color: #3daee9; font-weight: bold;" : "color: #ffffff;");
+    connect(btnShuffle, &QPushButton::clicked, this, [this]() {
+        isShuffle = !isShuffle;
+        btnShuffle->setStyleSheet(isShuffle ? "background-color: #1DB954; color: white;" : "");
     });
-    connect(btnRepeat, &QPushButton::clicked, this, [this](bool checked) {
-        isRepeat = checked;
-        btnRepeat->setStyleSheet(checked ? "color: #3daee9; font-weight: bold;" : "color: #ffffff;");
+
+    connect(btnRepeat, &QPushButton::clicked, this, [this]() {
+        isRepeat = !isRepeat;
+        btnRepeat->setStyleSheet(isRepeat ? "background-color: #1DB954; color: white;" : "");
     });
+
+    // ==================================================
+    // 5. [단축키 설정]
+    // ==================================================
+    auto* spaceShortcut = new QShortcut(QKeySequence(Qt::Key_Space), this);
+
+    // 🌟 [추가] 스페이스바를 꾹 누르고 있어도 연속 입력이 안 되도록 차단!
+    spaceShortcut->setAutoRepeat(false);
+
+    connect(spaceShortcut, &QShortcut::activated, this, &MusicPlayerWindow::slotPlayPause);
+
 
     // inspired by KDE Breeze
     this->setStyleSheet(R"(
@@ -211,7 +266,7 @@ void MusicPlayerWindow::setupUI() {
 // 슬라이더의 빈 공간을 클릭했을 때 그 위치로 뿅! 하고 점프하는 고급 마법
 bool MusicPlayerWindow::eventFilter(QObject *obj, QEvent *event) {
     if (obj == sliderPosition && event->type() == QEvent::MouseButtonPress) {
-        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+        auto *mouseEvent = dynamic_cast<QMouseEvent *>(event);
         if (mouseEvent->button() == Qt::LeftButton) {
             // 클릭한 X 좌표를 슬라이더의 0~100% 비율로 환산해서 위치 계산
             int val = QStyle::sliderValueFromPosition(sliderPosition->minimum(), sliderPosition->maximum(), mouseEvent->pos().x(), sliderPosition->width());
@@ -300,6 +355,13 @@ void MusicPlayerWindow::playSongFromTable(int row) {
 
 // 재생/일시정지 통합 로직
 void MusicPlayerWindow::slotPlayPause() {
+    // 🌟 [추가] 300ms(0.3초) 쿨타임 설정
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+    if (currentTime - lastPlayPauseTime < 300) { // 300 밀리초(0.3초) 이내면
+        return; // 아무것도 안 하고 그냥 무시! (연타 방지)
+    }
+    lastPlayPauseTime = currentTime; // 쿨타임이 지났으면 현재 시간으로 갱신
+
     if (isPlaying) {
         player.pause();
         btnPlayPause->setText("▶");
@@ -349,7 +411,8 @@ void MusicPlayerWindow::slotUpdateProgress() {
     double current = player.getCurrentTime();
 
     if (!sliderPosition->isSliderDown()) {
-        sliderPosition->setValue(static_cast<int>(current));
+        return;
+        //sliderPosition->setValue(static_cast<int>(current));
     }
 
     // 노래가 끝났을 때의 행동 결정
@@ -412,7 +475,7 @@ void MusicPlayerWindow::slotOpenFolder() {
 
 // 이동할 때 한 번에 싹 이동하게 수정
 void MusicPlayerWindow::slotSeek() {
-    player.setPosition(static_cast<double>(sliderPosition->value()));
+    player.setPosition(static_cast<float>(sliderPosition->value()));
 }
 
 void MusicPlayerWindow::closeEvent(QCloseEvent *event) {
@@ -457,7 +520,7 @@ void MusicPlayerWindow::loadPlaylist() const {
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (!doc.isArray()) return;
 
-    for (const QJsonValue& value : doc.array()) {
+    for (const QJsonValueRef& value : doc.array()) {
         QJsonObject obj = value.toObject();
         QString path = obj["path"].toString();
 
@@ -547,10 +610,11 @@ void MusicPlayerWindow::slotSortTable(int column) {
 
     // 4. 정렬된 순서대로 다시 테이블에 꽂아넣기
     playlistTable->setRowCount(0);
-    playlistTable->setRowCount(rows.size());
+    // 🌟 여기 rows.size() 에도 static_cast<int> 를 씌워줘야 해!
+    playlistTable->setRowCount(static_cast<int>(rows.size()));
     currentRow = -1;
 
-    for (int r = 0; r < rows.size(); ++r) {
+    for (int r = 0; r < static_cast<int>(rows.size()); ++r) {
         playlistTable->setItem(r, 0, rows[r].titleItem);
         playlistTable->setItem(r, 1, rows[r].artistItem);
         playlistTable->setItem(r, 2, rows[r].albumItem);
@@ -566,4 +630,4 @@ void MusicPlayerWindow::slotSortTable(int column) {
     playlistTable->horizontalHeader()->setSortIndicator(column, currentSortOrder);
 }
 
-MusicPlayerWindow::~MusicPlayerWindow() {}
+MusicPlayerWindow::~MusicPlayerWindow() = default;
