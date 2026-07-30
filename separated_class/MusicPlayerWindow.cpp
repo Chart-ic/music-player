@@ -63,14 +63,14 @@ void MusicPlayerWindow::setupUI() {
     lblAlbumArt = new QLabel(leftWidget);
     lblAlbumArt->setMinimumSize(250, 250);
     lblAlbumArt->setMaximumSize(320, 320);
-    lblAlbumArt->setScaledContents(true);
+    lblAlbumArt->setScaledContents(false);
     lblAlbumArt->setAlignment(Qt::AlignCenter);
     lblAlbumArt->setText("Album Art");
     lblAlbumArt->setStyleSheet("background-color: #2b2b2b; border-radius: 8px; color: #888888;");
 
     leftLayout->addWidget(lblAlbumArt, 0, Qt::AlignCenter);
 
-    // [1-2] 곡 정보 (제목, 아티스트, 앨범, 스펙) - 🌟 폰트 크기 및 굵기 업그레이드!
+    // [1-2] 곡 정보 (제목, 아티스트, 앨범, 스펙) - 폰트 크기 및 굵기 업그레이드!
     lblTitle = new MarqueeLabel(leftWidget);
     lblTitle->setText("재생 중인 곡 없음");
     lblTitle->setAlignment(Qt::AlignCenter);
@@ -97,7 +97,7 @@ void MusicPlayerWindow::setupUI() {
     leftLayout->addWidget(lblAlbum);
     leftLayout->addWidget(lblSpecs);
 
-    // 🌟 [핵심 포인트] 상단 곡정보와 하단 버튼들 사이를 밀어내는 강력한 공간(스프링)!
+    // [핵심 포인트] 상단 곡정보와 하단 버튼들 사이를 밀어내는 강력한 공간(스프링)!
     leftLayout->addStretch();
 
     // --------------------------------------------------
@@ -164,8 +164,25 @@ void MusicPlayerWindow::setupUI() {
     playlistTable->setSelectionMode(QAbstractItemView::SingleSelection);
     playlistTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     playlistTable->setAlternatingRowColors(true);
-    playlistTable->horizontalHeader()->setStretchLastSection(true);
-    playlistTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+
+    // ==========================================
+    // [수정된 부분] 비율 조정 확실하게 픽스!
+    // ==========================================
+    // 1. 충돌을 일으키던 '마지막 열 자동 늘림' 옵션 끄기
+    playlistTable->horizontalHeader()->setStretchLastSection(false);
+
+    // 2. 각 칸의 늘어나는 성질 지정
+    playlistTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);     // 제목: 남는 공간 다 먹기
+    playlistTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive); // 아티스트: 마우스로 크기 조절 가능
+    playlistTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive); // 앨범: 마우스로 크기 조절 가능
+    playlistTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);       // 재생시간: 크기 고정
+
+    // 3. 1, 2, 3열의 기본 너비 세팅
+    playlistTable->setColumnWidth(1, 150); // 아티스트 칸
+    playlistTable->setColumnWidth(2, 200); // 앨범 칸
+    playlistTable->setColumnWidth(3, 80);  // 재생시간 칸 (03:45 텍스트가 쏙 들어갈 크기)
+
+    // 4. 경로(4열) 숨기기
     playlistTable->setColumnHidden(4, true);
 
     rightLayout->addWidget(playlistTable);
@@ -211,7 +228,7 @@ void MusicPlayerWindow::setupUI() {
     // ==================================================
     auto* spaceShortcut = new QShortcut(QKeySequence(Qt::Key_Space), this);
 
-    // 🌟 [추가] 스페이스바를 꾹 누르고 있어도 연속 입력이 안 되도록 차단!
+    // [추가] 스페이스바를 꾹 누르고 있어도 연속 입력이 안 되도록 차단!
     spaceShortcut->setAutoRepeat(false);
 
     connect(spaceShortcut, &QShortcut::activated, this, &MusicPlayerWindow::slotPlayPause);
@@ -289,7 +306,7 @@ void MusicPlayerWindow::addSongToTable(const QString& path, const MusicMetadata&
     itemTitle->setData(Qt::UserRole + 1, meta.track);
     itemTitle->setData(Qt::UserRole + 2, meta.disc);
 
-    // 🌟 추가: 스펙 텍스트를 한 번만 포맷팅해서 테이블 아이템의 비밀 주머니(+3)에 숨겨둠!
+    // 추가: 스펙 텍스트를 한 번만 포맷팅해서 테이블 아이템의 비밀 주머니(+3)에 숨겨둠!
     QString channelStr = (meta.channels == 2) ? "Stereo" : (meta.channels == 1 ? "Mono" : QString::number(meta.channels) + " Ch");
     QString bitDepthStr = (meta.bitDepth > 0) ? QString("%1-bit | ").arg(meta.bitDepth) : "";
     QString specText = QString("🎵 %1%2 kHz | %3 kbps | %4")
@@ -332,15 +349,27 @@ void MusicPlayerWindow::playSongFromTable(int row) {
                                .arg(channelStr);
         lblSpecs->setText(specText); */
 
+        // ----------------------------------------------------
+        // 🌟 [새로운 코드] 앨범 아트 불러오기 부분
+        // ----------------------------------------------------
         QByteArray artData = AudioEngine::getAlbumArt(path.toStdString());
+
         if (!artData.isEmpty()) {
             QPixmap pixmap;
             pixmap.loadFromData(artData);
-            lblAlbumArt->setPixmap(pixmap.scaled(300, 300, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+            // 1. 화면에 바로 띄우지 않고, 원본 변수에 '저장'만 해둡니다.
+            originalAlbumArt = pixmap;
         } else {
+            // 1-1. 앨범 아트가 없을 때는 원본 변수를 비워줍니다.
+            originalAlbumArt = QPixmap();
+
             lblAlbumArt->clear();
             lblAlbumArt->setText("No Cover Art");
         }
+
+        // 2. 저장된 원본을 현재 창 크기에 맞게 리사이즈해서 띄워주는 함수 호출!
+        updateAlbumArtDisplay();
 
         playlistTable->selectRow(row);
         sliderPosition->setRange(0, static_cast<int>(player.getTotalTime()));
@@ -355,7 +384,7 @@ void MusicPlayerWindow::playSongFromTable(int row) {
 
 // 재생/일시정지 통합 로직
 void MusicPlayerWindow::slotPlayPause() {
-    // 🌟 [추가] 300ms(0.3초) 쿨타임 설정
+    // [추가] 300ms(0.3초) 쿨타임 설정
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
     if (currentTime - lastPlayPauseTime < 300) { // 300 밀리초(0.3초) 이내면
         return; // 아무것도 안 하고 그냥 무시! (연타 방지)
@@ -410,21 +439,25 @@ void MusicPlayerWindow::slotUpdateProgress() {
     double total = player.getTotalTime();
     double current = player.getCurrentTime();
 
-    if (!sliderPosition->isSliderDown()) {
-        return;
-        //sliderPosition->setValue(static_cast<int>(current));
-    }
+    // 재생 중인 곡이 없거나 길이가 0이면 진행하지 않음
+    if (total <= 0) return;
 
-    // 노래가 끝났을 때의 행동 결정
-    if (currentRow >= 0 && total > 0 && current >= total - 0.1) {
+    // 1. [가장 중요] 곡이 끝났는지 먼저 체크! (자동 다음 곡 / 반복 재생)
+    if (currentRow >= 0 && current >= total - 0.2) {
         if (isRepeat) {
-            // 반복이 켜져 있으면 위치를 0으로 돌리고 다시 재생!
+            // 한 곡 반복 재생
             player.setPosition(0);
             player.play();
         } else {
-            // 꺼져 있으면 자연스럽게 다음 곡으로
+            // 다음 곡 자동 재생 (셔플 옵션도 slotNext 내부에서 알아서 처리됨!)
             slotNext();
         }
+        return;
+    }
+
+    // 2. 사용자가 마우스로 슬라이더를 잡고 '드래그 중'이 아닐 때만 재생 바 위치 업데이트
+    if (!sliderPosition->isSliderDown()) {
+        sliderPosition->setValue(static_cast<int>(current));
     }
 }
 
@@ -434,7 +467,7 @@ void MusicPlayerWindow::slotVolumeChanged(int value) {
 }
 
 void MusicPlayerWindow::slotOpenFile() {
-    QString fileName = QFileDialog::getOpenFileName(this, "Open Music", "", "Audio (*.flac *.mp3 *.opus *.wav *.ogg)");
+    QString fileName = QFileDialog::getOpenFileName(this, "Open Music", "", "Audio (*.flac *.mp3 *.opus *.wav *.ogg *.)");
     if (!fileName.isEmpty()) {
         MusicMetadata meta = AudioEngine::getMetadata(fileName.toStdString());
         addSongToTable(fileName, meta);
@@ -445,11 +478,11 @@ void MusicPlayerWindow::slotOpenFolder() {
     QString dirPath = QFileDialog::getExistingDirectory(this, "Open Folder", "");
     if (dirPath.isEmpty()) return;
 
-    // 🌟 버튼 텍스트를 바꿔서 로딩 중임을 알림 (UI 응답성)
+    // 버튼 텍스트를 바꿔서 로딩 중임을 알림 (UI 응답성)
     btnFolderOpen->setText("로딩 중...");
     btnFolderOpen->setEnabled(false);
 
-    // 🌟 일꾼 스레드(알바생) 하나 고용해서 백그라운드로 보냄!
+    // 일꾼 스레드(알바생) 하나 고용해서 백그라운드로 보냄!
     QThread::create([this, dirPath]() {
         QDirIterator it(dirPath, {"*.flac", "*.mp3", "*.opus", "*.wav", "*.ogg"}, QDir::Files, QDirIterator::Subdirectories);
 
@@ -458,7 +491,7 @@ void MusicPlayerWindow::slotOpenFolder() {
             // 디스크를 긁는 무거운 작업은 백그라운드에서 진행
             MusicMetadata meta = AudioEngine::getMetadata(path.toStdString());
 
-            // 🌟 분석이 끝나면 메인 스레드(사장)한테 "표에 추가해주세요!" 라고 안전하게 결재 올림
+            // 분석이 끝나면 메인 스레드(사장)한테 "표에 추가해주세요!" 라고 안전하게 결재 올림
             QMetaObject::invokeMethod(this, [this, path, meta]() {
                 addSongToTable(path, meta);
             });
@@ -483,7 +516,7 @@ void MusicPlayerWindow::closeEvent(QCloseEvent *event) {
     QWidget::closeEvent(event);
 }
 
-// 🌟 1. 앱 꺼질 때 모든 데이터를 JSON 객체로 예쁘게 포장해서 저장
+// 1. 앱 꺼질 때 모든 데이터를 JSON 객체로 예쁘게 포장해서 저장
 void MusicPlayerWindow::savePlaylist() const {
     QJsonArray playlistArray;
     for (int row = 0; row < playlistTable->rowCount(); ++row) {
@@ -509,7 +542,7 @@ void MusicPlayerWindow::savePlaylist() const {
     }
 }
 
-// 🌟 2. 앱 켤 때 오디오 엔진 안 거치고 다이렉트로 표에 꽂아버림! (부팅속도 극강)
+// 2. 앱 켤 때 오디오 엔진 안 거치고 다이렉트로 표에 꽂아버림! (부팅속도 극강)
 void MusicPlayerWindow::loadPlaylist() const {
     QFile file("playlist.json");
     if (!file.open(QIODevice::ReadOnly)) return;
@@ -574,7 +607,7 @@ void MusicPlayerWindow::slotSortTable(int column) {
         });
     }
 
-    // 3. 대망의 다중 정렬 알고리즘 🌟
+    // 3. 대망의 다중 정렬 알고리즘
     std::ranges::sort(rows.begin(), rows.end(), [column, this](const RowItems& a, const RowItems& b) {
         QString titleA = a.titleItem->text(), titleB = b.titleItem->text();
         QString artistA = a.artistItem->text(), artistB = b.artistItem->text();
@@ -610,7 +643,7 @@ void MusicPlayerWindow::slotSortTable(int column) {
 
     // 4. 정렬된 순서대로 다시 테이블에 꽂아넣기
     playlistTable->setRowCount(0);
-    // 🌟 여기 rows.size() 에도 static_cast<int> 를 씌워줘야 해!
+    // 여기 rows.size() 에도 static_cast<int> 를 씌워줘야 해!
     playlistTable->setRowCount(static_cast<int>(rows.size()));
     currentRow = -1;
 
@@ -628,6 +661,28 @@ void MusicPlayerWindow::slotSortTable(int column) {
 
     // 5. 헤더 UI 화살표 방향 업데이트
     playlistTable->horizontalHeader()->setSortIndicator(column, currentSortOrder);
+}
+
+// 앨범 아트를 QLabel 크기에 맞춰 비율을 유지하며 부드럽게 리사이즈
+void MusicPlayerWindow::updateAlbumArtDisplay() const {
+    if (originalAlbumArt.isNull() || !lblAlbumArt) return;
+
+    // 현재 QLabel의 크기에 맞추되:
+    // 1. Qt::KeepAspectRatio -> 이미지 비율 깨짐 방지
+    // 2. Qt::SmoothTransformation -> 픽셀 깨짐 방지 (고화질 스케일링)
+    QPixmap scaled = originalAlbumArt.scaled(
+        lblAlbumArt->size(),
+        Qt::KeepAspectRatio,
+        Qt::SmoothTransformation
+    );
+
+    lblAlbumArt->setPixmap(scaled);
+}
+
+// 창 크기가 바뀔 때마다 앨범 아트도 비율에 맞춰 깔끔하게 재계산
+void MusicPlayerWindow::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    updateAlbumArtDisplay();
 }
 
 MusicPlayerWindow::~MusicPlayerWindow() = default;

@@ -22,6 +22,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override; // 창 크기 변경 감지 이벤트 추가
 
 private slots:
     void slotOpenFile();
@@ -33,13 +34,14 @@ private slots:
     void slotVolumeChanged(int value);
     void slotNext();
     void slotPrev();
-    void slotSortTable(int column); // 🌟 추가: 우리가 직접 제어할 정렬 함수!
+    void slotSortTable(int column); // 추가: 우리가 직접 제어할 정렬 함수!
 
 private:
     void setupUI();
     void loadPlaylist() const;
     void savePlaylist() const;
     void addSongToTable(const QString& path, const MusicMetadata& meta) const;
+    void updateAlbumArtDisplay() const; // 앨범 아트 갱신 함수 추가
 
     AudioEngine player;
 
@@ -64,7 +66,8 @@ private:
 
     QPushButton *btnShuffle{nullptr};
     QPushButton *btnRepeat{nullptr};
-    qint64 lastPlayPauseTime = 0; // 🌟 추가: 마지막으로 재생/일시정지를 누른 시간
+    qint64 lastPlayPauseTime = 0; // 추가: 마지막으로 재생/일시정지를 누른 시간
+    QPixmap originalAlbumArt;     // 원본 앨범 아트 보관 변수
 
     bool isShuffle = false;
     bool isRepeat = false;
@@ -73,7 +76,7 @@ private:
     bool isPlaying = false;
     void playSongFromTable(int row);
 
-    // 🌟 추가: 현재 정렬 상태를 기억할 변수들
+    // 추가: 현재 정렬 상태를 기억할 변수들
     Qt::SortOrder currentSortOrder = Qt::AscendingOrder;
     int currentSortColumn = -1;
 };

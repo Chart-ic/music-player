@@ -33,7 +33,7 @@ void MarqueeLabel::paintEvent(QPaintEvent *event) {
     if (fm.horizontalAdvance(fullText) > width()) {
         QPainter p(this);
 
-        // 🌟 추가: 다크모드 테마의 글자색(하얀색/밝은회색)을 가져와서 그리기 펜에 장착!
+        // 추가: 다크모드 테마의 글자색(하얀색/밝은회색)을 가져와서 그리기 펜에 장착!
         p.setPen(palette().color(QPalette::WindowText));
 
         p.setClipRect(rect()); // 라벨 크기 밖 텍스트 마스킹

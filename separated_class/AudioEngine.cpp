@@ -23,7 +23,7 @@ AudioEngine::~AudioEngine() {
     }
 }
 
-// 🌟 3. Load 함수 (음원 바뀔 때마다 장치 샘플레이트 맞춤 변신!)
+// 3. Load 함수 (음원 바뀔 때마다 장치 샘플레이트 맞춤 변신!)
 bool AudioEngine::load(const std::string& filePath) {
     // 이전 곡이 켜져있다면 장치 끄기
     if (m_isLoaded) {
@@ -43,7 +43,7 @@ bool AudioEngine::load(const std::string& filePath) {
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_playback);
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = m_decoder.outputChannels;
-    deviceConfig.sampleRate = m_decoder.outputSampleRate; // 🌟 여기가 44100, 96000 등으로 휙휙 바뀜!
+    deviceConfig.sampleRate = m_decoder.outputSampleRate; // 여기가 44100, 96000 등으로 휙휙 바뀜!
     deviceConfig.dataCallback = AudioEngine::data_callback;
     deviceConfig.pUserData = this;
 
@@ -57,7 +57,7 @@ bool AudioEngine::load(const std::string& filePath) {
     return true;
 }
 
-// 🌟 4. 기본 조작 함수들 (ma_engine에서 ma_device 조작으로 변경)
+// 4. 기본 조작 함수들 (ma_engine에서 ma_device 조작으로 변경)
 void AudioEngine::play() { if (m_isLoaded) ma_device_start(&device); }
 void AudioEngine::pause() { if (m_isLoaded) ma_device_stop(&device); }
 void AudioEngine::resume() { play(); }
@@ -68,7 +68,7 @@ bool AudioEngine::isPlaying() const {
     return m_isLoaded && ma_device_get_state(&const_cast<ma_device&>(device)) == ma_device_state_started;
 }
 
-// 🌟 5. 시간 & 탐색 기능 (프레임 기반으로 정확하게)
+// 5. 시간 & 탐색 기능 (프레임 기반으로 정확하게)
 void AudioEngine::setPosition(float seconds) { // (함수 이름은 작성하신 코드에 맞게!)
     if (!m_isLoaded) return;
     // 1. 오디오 장치 아주 잠깐 일시정지 (스레드 충돌 방지)
@@ -97,7 +97,7 @@ float AudioEngine::getCurrentTime() const {
 }
 
 
-// 🌟 118번 줄 부근 (콜백 구현)
+// 118번 줄 부근 (콜백 구현)
 void AudioEngine::data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) { // NOLINT
     auto *engine = static_cast<AudioEngine*>(pDevice->pUserData);
     if (!engine || !engine->m_isLoaded) return;
@@ -135,11 +135,11 @@ MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
         meta.sampleRate = properties->sampleRate();
         meta.channels = properties->channels();
 
-        // 🌟 FLAC 파일인 경우 24bit / 32bit 등 진짜 비트 심도 추출
+        // FLAC 파일인 경우 24bit / 32bit 등 진짜 비트 심도 추출
         if (auto *flacProps = dynamic_cast<TagLib::FLAC::Properties *>(properties)) {
             meta.bitDepth = flacProps->bitsPerSample();
         }
-        // 🌟 WAV 파일인 경우
+        // WAV 파일인 경우
         else if (auto *wavProps = dynamic_cast<TagLib::RIFF::WAV::Properties *>(properties)) {
             meta.bitDepth = wavProps->bitsPerSample();
         }
@@ -149,7 +149,7 @@ MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
 
     if (ma_decoder_init_file(filePath.c_str(), &decoderConfig, &decoder) == MA_SUCCESS) {
 
-        // 🌟 2. 원본 음원의 Bit Depth 판별
+        // 2. 원본 음원의 Bit Depth 판별
         int bitDepth = 16;
         switch (decoder.outputFormat) {
             case ma_format_s16:
@@ -180,7 +180,7 @@ MusicMetadata AudioEngine::getMetadata(const std::string& filePath) {
 }
 
 QByteArray AudioEngine::getAlbumArt(const std::string& filePath) {
-    // 🌟 파일 확장자 추출 및 소문자 변환
+    // 파일 확장자 추출 및 소문자 변환
     std::string ext;
     size_t dotPos = filePath.find_last_of('.');
     if (dotPos != std::string::npos) {
@@ -188,7 +188,7 @@ QByteArray AudioEngine::getAlbumArt(const std::string& filePath) {
         std::ranges::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     }
 
-    // 🌟 1. MP3 파일인 경우에만 MPEG 파서 실행 (로그 출력 방지)
+    // 1. MP3 파일인 경우에만 MPEG 파서 실행 (로그 출력 방지)
     if (ext == "mp3") {
         TagLib::MPEG::File mpegFile(filePath.c_str());
         if (mpegFile.isValid() && mpegFile.ID3v2Tag()) {
@@ -201,7 +201,7 @@ QByteArray AudioEngine::getAlbumArt(const std::string& filePath) {
             }
         }
     }
-    // 🌟 2. FLAC 파일인 경우
+    // 2. FLAC 파일인 경우
     else if (ext == "flac") {
         TagLib::FLAC::File flacFile(filePath.c_str());
         if (flacFile.isValid()) {
