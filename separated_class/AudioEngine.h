@@ -42,7 +42,7 @@ public:
 
 private:
     ma_device device{};
-    ma_decoder m_decoder{}; // 🌟 핵심! 엔진 대신 디코더를 직접 씁니다.
+    ma_decoder m_decoder{}; // 핵심! 엔진 대신 디코더를 직접 씁니다.
     bool m_isLoaded{false};
 
     // 디바이스 콜백 함수
