@@ -1,4 +1,4 @@
-# music-player
+# PSMP, Personal Simple Music Player
 AI와 함께 제작하고 있는 간단한 플레이어 입니다.
 [miniaudio](https://github.com/mackron/miniaudio) 와 Qt를 이용하여 제작됩니다.
 
