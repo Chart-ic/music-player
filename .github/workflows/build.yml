@@ -1,8 +1,10 @@
-name: Cross-Platform Build
+name: Cross-Platform Build & Release
 
 on:
   push:
     branches: [ "main", "master" ]
+    tags:
+      - 'v*' # v1.0.0 같은 태그를 생성해서 푸시하면 자동 실행
   pull_request:
     branches: [ "main", "master" ]
 
@@ -14,40 +16,40 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: music_player-linux
+            artifact_name: music-player-linux
           - os: windows-latest
-            artifact_name: music_player-windows.exe
+            artifact_name: music-player-windows.exe
           - os: macos-latest
-            artifact_name: music_player-mac
+            artifact_name: music-player-mac
 
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. 리눅스 환경 빌드에 필요한 시스템 패키지 설치
+      # 2. 리눅스 의존성 라이브러리 설치
       - name: Install Linux Dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libgl1-mesa-dev libpulse-dev libasound2-dev
 
-      # 3. Qt 6 설치 (Windows, Mac, Linux 공통)
+      # 3. Qt 6 설치
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.5.0'
           arch: ${{ runner.os == 'Windows' && 'win64_msvc2019_64' || '' }}
 
-      # 4. CMake 구성 (Configure)
+      # 4. CMake 빌드 구성
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-      # 5. 빌드 실행 (Build)
+      # 5. 프로젝트 빌드
       - name: Build Project
         run: cmake --build build --config Release
 
-      # 6. 생성된 빌드 결과물을 아티팩트로 저장 (웹에서 다운로드 가능하게 묶어줌)
+      # 6. 아티팩트 업로드 (Build 결과물 다운로드용)
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:

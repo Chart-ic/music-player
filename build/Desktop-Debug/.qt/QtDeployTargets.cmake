@@ -1,2 +1,0 @@
-set(__QT_DEPLOY_TARGET_music_player_FILE /home/chartic/CLionProjects/music_player/build/Desktop-Debug/music_player)
-set(__QT_DEPLOY_TARGET_music_player_TYPE EXECUTABLE)

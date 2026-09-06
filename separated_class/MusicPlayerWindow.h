@@ -9,6 +9,8 @@
 #include "AudioEngine.h"
 #include "MarqueeLabel.h"
 
+class QSystemTrayIcon;
+
 
 class MusicPlayerWindow : public QWidget {
     Q_OBJECT
@@ -34,14 +36,22 @@ private slots:
     void slotVolumeChanged(int value);
     void slotNext();
     void slotPrev();
+    void slotRemoveSelectedSong();
     void slotSortTable(int column); // 추가: 우리가 직접 제어할 정렬 함수!
 
 private:
     void setupUI();
     void loadPlaylist() const;
     void savePlaylist() const;
+    void loadSettings();
+    void saveSettings() const;
     void addSongToTable(const QString& path, const MusicMetadata& meta) const;
     void updateAlbumArtDisplay() const; // 앨범 아트 갱신 함수 추가
+    void updateAlbumArtGeometry() const;
+    void updatePlaylistSummary() const;
+    void setupTrayIcon();
+    void restoreWindow();
+    void resetNowPlaying();
 
     AudioEngine player;
 
@@ -50,6 +60,9 @@ private:
     QLabel *lblArtist{nullptr};
     QLabel *lblAlbum{nullptr};
     QLabel *lblSpecs{nullptr};
+    QLabel *lblCurrentTime{nullptr};
+    QLabel *lblTotalTime{nullptr};
+    QLabel *lblPlaylistCount{nullptr};
 
     QTableWidget *playlistTable{nullptr};
 
@@ -66,11 +79,14 @@ private:
 
     QPushButton *btnShuffle{nullptr};
     QPushButton *btnRepeat{nullptr};
+    QSystemTrayIcon *trayIcon{nullptr};
     qint64 lastPlayPauseTime = 0; // 추가: 마지막으로 재생/일시정지를 누른 시간
     QPixmap originalAlbumArt;     // 원본 앨범 아트 보관 변수
 
     bool isShuffle = false;
     bool isRepeat = false;
+    bool isQuitting = false;
+    bool trayHintShown = false;
 
     int currentRow = -1;
     bool isPlaying = false;
